@@ -1,0 +1,59 @@
+---
+main:
+    mode: 'train'
+
+train:
+    mode: 'VA'
+    gpu_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    n_epochs: 200
+    freeze_feature_extractor: true
+    resume: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2/best_loss.pth'
+    only_model: true
+    loss: ['BCE']
+    save_dir: '/scratch3/users/cssung/FF++/output/FS_c3dr50_vgg_768_transformer_depths_1_heads_8_mlpdim_2048_V_from_avts_rgb_len72e-2'
+    save_frequency: 1
+    patience: 0
+    val_policy: ['loss']
+    show_metric: true
+
+test:
+    mode: 'VA'
+    gpu_ids: [0]
+    predict: 'fc'
+    resume: '/scratch3/users/cssung/FF++/output/FS_c3dr50_vgg_768_transformer_depths_1_heads_8_mlpdim_2048_V_from_avts_rgb_len72e-2/best_auc.pth'
+    save_dir: '/scratch3/users/cssung/FF++/output/FS_c3dr50_vgg_768_transformer_depths_1_heads_8_mlpdim_2048_V_from_avts_rgb_len72e-2'
+
+dataset:
+    use_percentage: 100
+    size: 224
+    fps: 25
+    duration: 0.72
+    sample_rate: 1
+    train_fake_types: ['DF', 'F2F', 'NT']
+    test_fake_types: ['FS']
+    img_type: 'face'
+    grayscale: false
+    aud_feat: 'mfcc'
+    root: '/scratch3/users/cssung/datasets/FaceForensics'
+    test: '/home/cssung/AVnet/datasets/FF++/csvs/FS_V_duration_0.2_face_test.csv'
+
+dataloader:
+    batch_size: 320
+    num_workers: 8
+
+model:
+    backbone: ['c3dr50', 'vgg', 'transformer']
+    normalized: ''
+    predict_label: true
+    predict_fake_label: false
+    modality_embedding: false
+    logit_adjustment: false
+    last_dim: 768
+    dropout: 0
+
+optimizer:
+    lr: 0.0002
+    weight_decay: 0.0001
+
+tensorboard:
+    comment: '_FF++_FS_c3dr50_vgg_768_transformer_depths_1_heads_8_mlpdim_2048_V_from_avts_rgb_len72e-2_bs32_lr2e-4'
