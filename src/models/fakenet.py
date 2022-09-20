@@ -33,7 +33,6 @@ class FakeNet(nn.Module):
         self.num_classes = num_classes
         self.fake_classes = fake_classes
         self.relu_type = relu_type
-self.
         self.logit_adjustment = logit_adjustment
         self.weight_decay = weight_decay
 
@@ -71,16 +70,12 @@ self.
                 output['vid'] = v_feats
             if self.normalized == '2norm':
                 b, t, d = v_feats.shape
-                v_feats = (v_feats, 'b t d -> b (t d)')
+                v_feats = rearrange(v_feats, 'b t d -> b (t d)')
                 v_feats = F.normalize(v_feats, p=2, dim=-1)
-                v_feats = (v_feats, 'b (t d) -> b t d', d=d)
-            
-            logits, cls_ferearrange
-            ature = self.forward_classification(v_feats)
+                v_feats = rearrange(v_feats, 'b (t d) -> b t d', d=d)
+            logits, cls_feature = self.forward_classification(v_feats)
             output['logits'] = logits
-            
-            if out_feat:rearrange
-
+            if out_feat:
                 output['cls'] = cls_feature
         elif self.mode == 'VA':
             vid, aud = x

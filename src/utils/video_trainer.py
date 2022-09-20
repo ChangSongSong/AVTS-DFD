@@ -168,9 +168,6 @@ class VideoTrainer():
                     elif 'LRW' in vpath[i]:
                         video_id = vpath[i].split('/')[-1]
 
-                    if self.augmented_type == 'AVTS':
-                        video_id += '_' + str(int(label[i].item()))
-
                     video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
                     video_to_labels[video_id] = label[i].view(-1).detach().cpu()
 
@@ -255,9 +252,6 @@ class VideoTrainer():
                             video_id = '_'.join(vpath[i].split('/')[-4:])
                         elif 'LRW' in vpath[i]:
                             video_id = vpath[i].split('/')[-1]
-
-                        if self.augmented_type == 'AVTS':
-                            video_id += '_' + str(int(label[i].item()))
 
                         video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
                         video_to_labels[video_id] = label[i].view(-1).detach().cpu()
@@ -363,7 +357,6 @@ class VideoTrainer():
         self.end_cycle = 0
         self.mode = self.config['train']['mode']
         self.orig_lr = self.config['optimizer']['lr']
-        self.augmented_type = self.config['dataset']['augmented_type']
         self.shift_type = self.config['dataset']['shift_type']
         self.show_metric = self.config['train']['show_metric']
         self.use_teacher = self.config['model']['use_teacher']
