@@ -13,7 +13,7 @@ from models.vivit import ViViT
 from models.resnet18 import ResNet18
 from models.c3dr50 import C3DR50
 from models.audio_encoder import SEResnet, VGG, VGG2, ResNet
-from models.temporal_transformer import TemporalTransformer
+from models.temporal_transformer import TemporalTransformerWithoutMLP
 
 
 class AVMNet(nn.Module):
@@ -53,7 +53,7 @@ class AVMNet(nn.Module):
 
             self.initialize_teacher()
             
-            self.v_pred = TemporalTransformer(
+            self.v_pred = TemporalTransformerWithoutMLP(
                 frames_per_clip=self.frames_per_clip,
                 dim=self.last_dim,
                 depth=1,
@@ -62,7 +62,7 @@ class AVMNet(nn.Module):
                 dropout=0.,
                 emb_dropout=0.,
             )
-            self.a_pred = TemporalTransformer(
+            self.a_pred = TemporalTransformerWithoutMLP(
                 frames_per_clip=self.frames_per_clip,
                 dim=self.last_dim,
                 depth=1,
