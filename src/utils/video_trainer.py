@@ -440,22 +440,22 @@ class VideoTrainer():
         )
 
         # Resume parameters
-        if config['train']['resume'] and os.path.isfile(config['train']['resume']):
-            self.resume(config['train']['resume'], config['train']['only_model'])
+        if self.config['train']['resume'] and os.path.isfile(self.config['train']['resume']):
+            self.resume(self.config['train']['resume'], self.config['train']['only_model'])
 
         # Print Model Info
         print()
-        max_model_name_length = max(map(len, config['model']['backbone']))
+        max_model_name_length = max(map(len, self.config['model']['backbone']))
         print('-'*(max_model_name_length+40))
 
         vid_model_parameters = sum([p.numel() for p in self.model.v_encoder.parameters()])
-        print(f'  Video   Model "{config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M')
+        print(f'  Video   Model "{self.config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M')
 
         aud_model_parameters = sum([p.numel() for p in self.model.a_encoder.parameters()])
-        print(f'  Audio   Model "{config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M')
+        print(f'  Audio   Model "{self.config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M')
 
         classify_model_parameters = 0
-        print(f' Classify Model "{config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M')
+        print(f' Classify Model "{self.config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M')
         print('-'*(max_model_name_length+40))
 
         total_model_parameters = sum([p.numel() for p in self.model.parameters()])
