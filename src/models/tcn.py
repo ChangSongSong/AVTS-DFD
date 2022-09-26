@@ -6,6 +6,7 @@ import torch.nn as nn
 
 
 class Chomp1d(nn.Module):
+
     def __init__(self, chomp_size, symm_chomp):
         super(Chomp1d, self).__init__()
         self.chomp_size = chomp_size
@@ -17,13 +18,23 @@ class Chomp1d(nn.Module):
         if self.chomp_size == 0:
             return x
         if self.symm_chomp:
-            return x[:, :, self.chomp_size // 2 : -self.chomp_size // 2].contiguous()
+            return x[:, :,
+                     self.chomp_size // 2:-self.chomp_size // 2].contiguous()
         else:
-            return x[:, :, : -self.chomp_size].contiguous()
+            return x[:, :, :-self.chomp_size].contiguous()
 
 
 class ConvBatchChompRelu(nn.Module):
-    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, relu_type, dwpw=False):
+
+    def __init__(self,
+                 n_inputs,
+                 n_outputs,
+                 kernel_size,
+                 stride,
+                 dilation,
+                 padding,
+                 relu_type,
+                 dwpw=False):
         super(ConvBatchChompRelu, self).__init__()
         self.dwpw = dwpw
         if dwpw:
@@ -40,16 +51,24 @@ class ConvBatchChompRelu(nn.Module):
                 ),
                 nn.BatchNorm1d(n_inputs),
                 Chomp1d(padding, True),
-                nn.PReLU(num_parameters=n_inputs) if relu_type == "prelu" else nn.ReLU(inplace=True),
+                nn.PReLU(num_parameters=n_inputs)
+                if relu_type == "prelu" else nn.ReLU(inplace=True),
                 nn.Conv1d(n_inputs, n_outputs, 1, 1, 0, bias=False),
                 nn.BatchNorm1d(n_outputs),
-                nn.PReLU(num_parameters=n_outputs) if relu_type == "prelu" else nn.ReLU(inplace=True),
+                nn.PReLU(num_parameters=n_outputs)
+                if relu_type == "prelu" else nn.ReLU(inplace=True),
             )
         else:
-            self.conv = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
+            self.conv = nn.Conv1d(n_inputs,
+                                  n_outputs,
+                                  kernel_size,
+                                  stride=stride,
+                                  padding=padding,
+                                  dilation=dilation)
             self.batchnorm = nn.BatchNorm1d(n_outputs)
             self.chomp = Chomp1d(padding, True)
-            self.non_lin = nn.PReLU(num_parameters=n_outputs) if relu_type == "prelu" else nn.ReLU()
+            self.non_lin = nn.PReLU(num_parameters=n_outputs
+                                    ) if relu_type == "prelu" else nn.ReLU()
 
     def forward(self, x):
         if self.dwpw:
@@ -62,9 +81,17 @@ class ConvBatchChompRelu(nn.Module):
 
 
 class MultibranchTemporalBlock(nn.Module):
-    def __init__(
-        self, n_inputs, n_outputs, kernel_sizes, stride, dilation, padding, dropout=0.2, relu_type="relu", dwpw=False
-    ):
+
+    def __init__(self,
+                 n_inputs,
+                 n_outputs,
+                 kernel_sizes,
+                 stride,
+                 dilation,
+                 padding,
+                 dropout=0.2,
+                 relu_type="relu",
+                 dwpw=False):
         super(MultibranchTemporalBlock, self).__init__()
 
         self.kernel_sizes = kernel_sizes
@@ -73,21 +100,33 @@ class MultibranchTemporalBlock(nn.Module):
         assert n_outputs % self.num_kernels == 0, "Number of output channels needs to be divisible by number of kernels"
 
         for k_idx, k in enumerate(self.kernel_sizes):
-            cbcr = ConvBatchChompRelu(
-                n_inputs, self.n_outputs_branch, k, stride, dilation, padding[k_idx], relu_type, dwpw=dwpw
-            )
+            cbcr = ConvBatchChompRelu(n_inputs,
+                                      self.n_outputs_branch,
+                                      k,
+                                      stride,
+                                      dilation,
+                                      padding[k_idx],
+                                      relu_type,
+                                      dwpw=dwpw)
             setattr(self, "cbcr0_{}".format(k_idx), cbcr)
         self.dropout0 = nn.Dropout(dropout)
 
         for k_idx, k in enumerate(self.kernel_sizes):
-            cbcr = ConvBatchChompRelu(
-                n_outputs, self.n_outputs_branch, k, stride, dilation, padding[k_idx], relu_type, dwpw=dwpw
-            )
+            cbcr = ConvBatchChompRelu(n_outputs,
+                                      self.n_outputs_branch,
+                                      k,
+                                      stride,
+                                      dilation,
+                                      padding[k_idx],
+                                      relu_type,
+                                      dwpw=dwpw)
             setattr(self, "cbcr1_{}".format(k_idx), cbcr)
         self.dropout1 = nn.Dropout(dropout)
 
         # Downsample?
-        self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if (n_inputs // self.num_kernels) != n_outputs else None
+        self.downsample = nn.Conv1d(
+            n_inputs, n_outputs,
+            1) if (n_inputs // self.num_kernels) != n_outputs else None
 
         # Final relu
         if relu_type == "relu":
@@ -120,7 +159,14 @@ class MultibranchTemporalBlock(nn.Module):
 
 
 class MultibranchTemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, tcn_options, dropout=0.2, relu_type="relu", dwpw=False):
+
+    def __init__(self,
+                 num_inputs,
+                 num_channels,
+                 tcn_options,
+                 dropout=0.2,
+                 relu_type="relu",
+                 dwpw=False):
         super(MultibranchTemporalConvNet, self).__init__()
 
         self.ksizes = tcn_options["kernel_size"]
@@ -128,7 +174,7 @@ class MultibranchTemporalConvNet(nn.Module):
         layers = []
         num_levels = len(num_channels)
         for i in range(num_levels):
-            dilation_size = 2 ** i
+            dilation_size = 2**i
             in_channels = num_inputs if i == 0 else num_channels[i - 1]
             out_channels = num_channels[i]
             padding = [(s - 1) * dilation_size for s in self.ksizes]
@@ -143,8 +189,7 @@ class MultibranchTemporalConvNet(nn.Module):
                     dropout=dropout,
                     relu_type=relu_type,
                     dwpw=dwpw,
-                )
-            )
+                ))
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -156,15 +201,26 @@ class MultibranchTemporalConvNet(nn.Module):
 
 
 class MultiscaleMultibranchTCN(nn.Module):
-    def __init__(self, input_size, num_channels, num_classes, tcn_options, dropout, relu_type, dwpw=False):
+
+    def __init__(self,
+                 input_size,
+                 num_channels,
+                 num_classes,
+                 tcn_options,
+                 dropout,
+                 relu_type,
+                 dwpw=False):
         super(MultiscaleMultibranchTCN, self).__init__()
 
         self.kernel_sizes = tcn_options["kernel_size"]
         self.num_kernels = len(self.kernel_sizes)
 
-        self.mb_ms_tcn = MultibranchTemporalConvNet(
-            input_size, num_channels, tcn_options, dropout=dropout, relu_type=relu_type, dwpw=dwpw
-        )
+        self.mb_ms_tcn = MultibranchTemporalConvNet(input_size,
+                                                    num_channels,
+                                                    tcn_options,
+                                                    dropout=dropout,
+                                                    relu_type=relu_type,
+                                                    dwpw=dwpw)
         # self.consensus_func = _average_batch
         self.tcn_output = nn.Linear(num_channels[-1], num_classes)
 
@@ -175,4 +231,3 @@ class MultiscaleMultibranchTCN(nn.Module):
         out = torch.mean(out, -1)
         out = self.tcn_output(out)
         return out
-

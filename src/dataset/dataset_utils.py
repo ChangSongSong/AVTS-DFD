@@ -8,18 +8,32 @@ def pil_loader(img_path, grayscale=False):
     else:
         return Image.open(img_path).convert('RGB')
 
+
 '''
 Borrow from https://github.com/chail/patch-forensics/blob/master/data/dataset_util.py
 '''
 
 IMG_EXTENSIONS = [
-    '.jpg', '.JPG', '.jpeg', '.JPEG',
-    '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
-    '.tif', '.TIF', '.tiff', '.TIFF',
+    '.jpg',
+    '.JPG',
+    '.jpeg',
+    '.JPEG',
+    '.png',
+    '.PNG',
+    '.ppm',
+    '.PPM',
+    '.bmp',
+    '.BMP',
+    '.tif',
+    '.TIF',
+    '.tiff',
+    '.TIFF',
 ]
+
 
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
+
 
 def make_dataset(img_dir, max_dataset_size=float("inf")):
     images = []

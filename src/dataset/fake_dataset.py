@@ -19,26 +19,27 @@ from dataset.transforms import ToTensorVideo, NormalizeVideo
 
 
 class FakeDataset(data.Dataset):
+
     def __init__(
-            self,
-            mode,
-            root,
-            input_mode='VA',
-            fps=25,
-            duration=1,
-            grayscale=True,
-            img_size=224,
-            img_type='face',
-            aud_feat='mfcc',
-            fake_types=['DF', 'FS', 'F2F', 'NT'],
-            use_percentage=100,
-            pick_one=False,
+        self,
+        mode,
+        root,
+        input_mode='VA',
+        fps=25,
+        duration=1,
+        grayscale=True,
+        img_size=224,
+        img_type='face',
+        aud_feat='mfcc',
+        fake_types=['DF', 'FS', 'F2F', 'NT'],
+        use_percentage=100,
+        pick_one=False,
     ):
         self.mode = mode
         self.input_mode = input_mode
         self.fps = fps
         self.duration = duration  # seconds
-        self.frames_per_clip = int(fps*duration)
+        self.frames_per_clip = int(fps * duration)
         self.grayscale = grayscale
         self.img_size = img_size
         self.img_type = img_type
@@ -51,34 +52,47 @@ class FakeDataset(data.Dataset):
         self.pick_one = pick_one
 
         self.video_info = self.get_info(root)
-        
+
         if use_percentage < 100:
             np.random.shuffle(self.video_info)
-            self.video_info = self.video_info[:int(len(self.video_info)*use_percentage/100)]
+            self.video_info = self.video_info[:int(
+                len(self.video_info) * use_percentage / 100)]
 
         if self.mode == 'train':
             self.transform = {
-                'video': Compose([
-                            ToTensorVideo(),
-                            RandomCrop((self.img_size, self.img_size)),
-                            RandomHorizontalFlip(0.5),
-                            NormalizeVideo((0.421,), (0.165,))
-                        ]),
-                'audio': Compose([
-                            # Gain(min_gain=-10, max_gain=10),
-                            MelSpectrogram(sample_rate=16000, n_mels=64, n_fft=512, win_length=512, hop_length=256),
-                        ]),
+                'video':
+                Compose([
+                    ToTensorVideo(),
+                    RandomCrop((self.img_size, self.img_size)),
+                    RandomHorizontalFlip(0.5),
+                    NormalizeVideo((0.421, ), (0.165, ))
+                ]),
+                'audio':
+                Compose([
+                    # Gain(min_gain=-10, max_gain=10),
+                    MelSpectrogram(sample_rate=16000,
+                                   n_mels=64,
+                                   n_fft=512,
+                                   win_length=512,
+                                   hop_length=256),
+                ]),
             }
         elif self.mode == 'val' or self.mode == 'test':
             self.transform = {
-                'video': Compose([
-                            ToTensorVideo(),
-                            CenterCrop((self.img_size, self.img_size)),
-                            NormalizeVideo((0.421,), (0.165,))
-                        ]),
-                'audio': Compose([
-                            MelSpectrogram(sample_rate=16000, n_mels=64, n_fft=512, win_length=512, hop_length=256),
-                        ]),
+                'video':
+                Compose([
+                    ToTensorVideo(),
+                    CenterCrop((self.img_size, self.img_size)),
+                    NormalizeVideo((0.421, ), (0.165, ))
+                ]),
+                'audio':
+                Compose([
+                    MelSpectrogram(sample_rate=16000,
+                                   n_mels=64,
+                                   n_fft=512,
+                                   win_length=512,
+                                   hop_length=256),
+                ]),
             }
 
     def __getitem__(self, index):
@@ -90,16 +104,18 @@ class FakeDataset(data.Dataset):
             vid = self.get_vid(vid_path, start_frame)
             if self.pick_one:
                 if self.mode == 'train':
-                    selected_frame = np.random.randint(self.frames_per_clip, size=1)[0]
+                    selected_frame = np.random.randint(self.frames_per_clip,
+                                                       size=1)[0]
                 else:
-                    selected_frame = self.frames_per_clip//2
-                vid = vid[:, selected_frame:selected_frame+1, :, :]
+                    selected_frame = self.frames_per_clip // 2
+                vid = vid[:, selected_frame:selected_frame + 1, :, :]
         # audio
         if 'A' in self.input_mode:
             aud = self.get_aud(aud_path, start_frame)
         # label
         label = torch.LongTensor([int(video_type != 'real')])
-        fake_type_label = torch.LongTensor([self.fake_types_to_idx[video_type]])
+        fake_type_label = torch.LongTensor(
+            [self.fake_types_to_idx[video_type]])
 
         if self.input_mode == 'V':
             return [vid], label, vid_path, fake_type_label
@@ -108,11 +124,17 @@ class FakeDataset(data.Dataset):
 
     def get_vid(self, vid_path, start_frame):
         # get data paths
-        end_frame = start_frame+self.frames_per_clip
-        img_paths = [os.path.join(vid_path, f'{i:06d}.jpg') for i in range(start_frame, end_frame, 1)]
+        end_frame = start_frame + self.frames_per_clip
+        img_paths = [
+            os.path.join(vid_path, f'{i:06d}.jpg')
+            for i in range(start_frame, end_frame, 1)
+        ]
 
         # load imgs
-        vid = np.stack([np.array(pil_loader(img_path, self.grayscale)) for img_path in img_paths])
+        vid = np.stack([
+            np.array(pil_loader(img_path, self.grayscale))
+            for img_path in img_paths
+        ])
 
         vid = torch.from_numpy(vid)
         if self.grayscale:
@@ -157,7 +179,8 @@ class FakeDataset(data.Dataset):
 
     def get_info(self, root):
         dataset_info = []
-        splits = json.load(open(os.path.join(root, f'splits/{self.mode}.json')))
+        splits = json.load(open(os.path.join(root,
+                                             f'splits/{self.mode}.json')))
         DIR = {
             'real': 'original_sequences/youtube/c23',
             'DF': 'manipulated_sequences/Deepfakes/c23',
@@ -212,41 +235,60 @@ class FakeDataset(data.Dataset):
                         v_name = p[i]
                         a_name = p[i] + '.wav'
                     else:
-                        v_name = p[i] + '_' + p[1-i]
+                        v_name = p[i] + '_' + p[1 - i]
                         if t in ['DF', 'FS', 'FSh']:
                             a_name = p[i] + '.wav'
                         elif t in ['F2F', 'NT']:
-                            a_name = p[1-i] + '.wav'
-                    vid_path = os.path.join(root, DIR[t], self.img_type, v_name)
+                            a_name = p[1 - i] + '.wav'
+                    vid_path = os.path.join(root, DIR[t], self.img_type,
+                                            v_name)
                     aud_path = os.path.join(root, 'audio_16000', a_name)
 
                     cond = True
                     if 'V' in self.input_mode:
-                        cond &= os.path.isdir(vid_path) and len(os.listdir(vid_path)) > 0
+                        cond &= os.path.isdir(vid_path) and len(
+                            os.listdir(vid_path)) > 0
                     if 'A' in self.input_mode:
                         cond &= os.path.isfile(aud_path)
 
                     if cond:
                         # get vaild frames
-                        exist_frames = sorted(list(map(lambda x: int(x[:-4]), os.listdir(vid_path))))
+                        exist_frames = sorted(
+                            list(
+                                map(lambda x: int(x[:-4]),
+                                    os.listdir(vid_path))))
                         first_frame = exist_frames[0]
                         last_frame = last_frame_dict[t]
                         if 'V' in self.input_mode:
                             last_frame = min(last_frame, exist_frames[-1])
                         if 'A' in self.input_mode:
                             sr, aud = wavfile.read(aud_path)
-                            aud_len = aud.shape[0]/sr
-                            last_frame = min(last_frame, int(aud_len*self.fps-1))
-                            
-                        for start_frame in range(first_frame, last_frame-self.frames_per_clip+1, skip):
-                            end_frame = start_frame+self.frames_per_clip
-                            img_paths = [os.path.join(vid_path, f'{i:06d}.jpg') for i in range(
-                                start_frame, end_frame, 1)]
-                            if all([os.path.isfile(img_path) for img_path in img_paths]):
+                            aud_len = aud.shape[0] / sr
+                            last_frame = min(last_frame,
+                                             int(aud_len * self.fps - 1))
+
+                        for start_frame in range(
+                                first_frame,
+                                last_frame - self.frames_per_clip + 1, skip):
+                            end_frame = start_frame + self.frames_per_clip
+                            img_paths = [
+                                os.path.join(vid_path, f'{i:06d}.jpg')
+                                for i in range(start_frame, end_frame, 1)
+                            ]
+                            if all([
+                                    os.path.isfile(img_path)
+                                    for img_path in img_paths
+                            ]):
                                 if 'A' in self.input_mode:
-                                    dataset_info.append([vid_path, aud_path, label_dict[t], start_frame])
+                                    dataset_info.append([
+                                        vid_path, aud_path, label_dict[t],
+                                        start_frame
+                                    ])
                                 else:
-                                    dataset_info.append([vid_path, None, label_dict[t], start_frame])
+                                    dataset_info.append([
+                                        vid_path, None, label_dict[t],
+                                        start_frame
+                                    ])
 
         return dataset_info
 

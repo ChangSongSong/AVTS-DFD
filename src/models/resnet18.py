@@ -7,19 +7,31 @@ from einops import rearrange
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
+    return nn.Conv2d(in_planes,
+                     out_planes,
+                     kernel_size=3,
+                     stride=stride,
+                     padding=1,
+                     bias=False)
 
 
 def downsample_basic_block(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=stride, bias=False),
+        nn.Conv2d(inplanes,
+                  outplanes,
+                  kernel_size=1,
+                  stride=stride,
+                  bias=False),
         nn.BatchNorm2d(outplanes),
     )
 
 
 def downsample_basic_block_v2(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
+        nn.AvgPool2d(kernel_size=stride,
+                     stride=stride,
+                     ceil_mode=True,
+                     count_include_pad=False),
         nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=1, bias=False),
         nn.BatchNorm2d(outplanes),
     )
@@ -28,7 +40,12 @@ def downsample_basic_block_v2(inplanes, outplanes, stride):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None, relu_type="relu"):
+    def __init__(self,
+                 inplanes,
+                 planes,
+                 stride=1,
+                 downsample=None,
+                 relu_type="relu"):
         super(BasicBlock, self).__init__()
 
         assert relu_type in ["relu", "prelu"]
@@ -69,10 +86,24 @@ class BasicBlock(nn.Module):
 
 
 class ResNet18(nn.Module):
-    def __init__(self, block=BasicBlock, in_channels=3, layers=[2, 2, 2, 2], num_filters=[64, 128, 256, 512], strides=[2, 2, 2, 2], relu_type="relu", gamma_zero=False, avg_pool_downsample=False):
+
+    def __init__(self,
+                 block=BasicBlock,
+                 in_channels=3,
+                 layers=[2, 2, 2, 2],
+                 num_filters=[64, 128, 256, 512],
+                 strides=[2, 2, 2, 2],
+                 relu_type="relu",
+                 gamma_zero=False,
+                 avg_pool_downsample=False):
         super(ResNet18, self).__init__()
-        
-        self.conv1 = nn.Conv2d(in_channels, num_filters[0], kernel_size=7, stride=2, padding=0, bias=False)
+
+        self.conv1 = nn.Conv2d(in_channels,
+                               num_filters[0],
+                               kernel_size=7,
+                               stride=2,
+                               padding=0,
+                               bias=False)
         self.pool1 = nn.MaxPool2d(kernel_size=3, stride=2)
 
         self.inplanes = num_filters[0]
@@ -82,11 +113,16 @@ class ResNet18(nn.Module):
 
         self.layers = nn.ModuleList()
         for i in range(4):
-            self.layers.append(self._make_layer(block, num_filters[i], layers[i], stride=strides[i]))
+            self.layers.append(
+                self._make_layer(block,
+                                 num_filters[i],
+                                 layers[i],
+                                 stride=strides[i]))
 
         self.avgpool = nn.Sequential(
-                            nn.AdaptiveAvgPool2d(1),
-                            nn.Flatten(1, 3),)
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(1, 3),
+        )
 
         # self.mlp_head = nn.Sequential(
         #     nn.Flatten(),
@@ -111,15 +147,22 @@ class ResNet18(nn.Module):
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = self.downsample_block(
-                inplanes=self.inplanes, outplanes=planes * block.expansion, stride=stride
-            )
+            downsample = self.downsample_block(inplanes=self.inplanes,
+                                               outplanes=planes *
+                                               block.expansion,
+                                               stride=stride)
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type))
+        layers.append(
+            block(self.inplanes,
+                  planes,
+                  stride,
+                  downsample,
+                  relu_type=self.relu_type))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes, relu_type=self.relu_type))
+            layers.append(
+                block(self.inplanes, planes, relu_type=self.relu_type))
 
         return nn.Sequential(*layers)
 

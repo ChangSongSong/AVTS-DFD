@@ -19,6 +19,7 @@ from utils.utils import *
 
 
 class VideoTrainer():
+
     def __init__(self, config):
         self.config = config
 
@@ -37,8 +38,7 @@ class VideoTrainer():
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=config['optimizer']['lr'],
-            weight_decay=config['optimizer']['weight_decay']
-        )
+            weight_decay=config['optimizer']['weight_decay'])
         # self.scheduler = CosineScheduler(config['optimizer']['lr'], config['train']['n_epochs'])
         # self.scheduler = CosineAnnealingLR(
         #                     self.optimizer,
@@ -47,7 +47,8 @@ class VideoTrainer():
         self.scaler = amp.GradScaler()
 
         # Move to GPU
-        self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
+        self.model = torch.nn.DataParallel(
+            self.model, device_ids=config['train']['gpu_ids']).to(self.device)
 
         # # Move optimizer to GPU
         # for param in self.optimizer.state.values():
@@ -75,7 +76,7 @@ class VideoTrainer():
 
     def train(self):
         print('\n--- Start Training ---')
-        for ep in range(self.current_ep+1, self.n_eps):
+        for ep in range(self.current_ep + 1, self.n_eps):
             print(f'\nEpoch {ep}')
             self.current_ep = ep
             self.train_one_epoch()
@@ -89,11 +90,9 @@ class VideoTrainer():
                 break
 
     def train_one_epoch(self):
-        loop = tqdm(
-            self.train_loader,
-            leave=True,
-            desc=f'Train Epoch:{self.current_ep}/{self.n_eps}'
-        )
+        loop = tqdm(self.train_loader,
+                    leave=True,
+                    desc=f'Train Epoch:{self.current_ep}/{self.n_eps}')
 
         ep_loss = defaultdict(int)
 
@@ -105,7 +104,8 @@ class VideoTrainer():
         for it, data in enumerate(loop):
             vid, aud, label, vpath = data
 
-            p = float(it + self.current_ep * len(self.train_loader)) / self.n_eps / len(self.train_loader)
+            p = float(it + self.current_ep * len(self.train_loader)
+                      ) / self.n_eps / len(self.train_loader)
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
 
             vid = vid.to(self.device, dtype=torch.float)
@@ -131,7 +131,7 @@ class VideoTrainer():
                 elif self.model.module.setting == 'AVM':
                     nce_AVTS_loss = output['NTXent_AVTS'].mean()
                     nce_AVC_loss = output['NTXent_AVC'].mean()
-                    total_loss += nce_AVTS_loss*10 + nce_AVC_loss
+                    total_loss += nce_AVTS_loss * 10 + nce_AVC_loss
                     ep_loss['NTXent_AVTS'] += nce_AVTS_loss.item()
                     ep_loss['NTXent_AVC'] += nce_AVC_loss.item()
 
@@ -168,21 +168,27 @@ class VideoTrainer():
                     elif 'LRW' in vpath[i]:
                         video_id = vpath[i].split('/')[-1]
 
-                    video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
-                    video_to_labels[video_id] = label[i].view(-1).detach().cpu()
+                    video_to_logits[video_id].append(
+                        output['logits'][i].view(-1).detach().cpu())
+                    video_to_labels[video_id] = label[i].view(
+                        -1).detach().cpu()
 
             loop.set_postfix(
                 # alpha=alpha if 'Adversarial' in self.use_losses else 0,
                 # da=domain_loss.item() if 'Adversarial' in self.use_losses else 0,
-                AVTS=nce_AVTS_loss.item() if self.model.module.setting in ['AVTS', 'AVM'] else 0,
-                AVC=nce_AVC_loss.item() if self.model.module.setting in ['AVC', 'AVM'] else 0,
+                AVTS=nce_AVTS_loss.item()
+                if self.model.module.setting in ['AVTS', 'AVM'] else 0,
+                AVC=nce_AVC_loss.item()
+                if self.model.module.setting in ['AVC', 'AVM'] else 0,
                 EMA=ema_loss.item() if 'L2' in self.use_losses else 0,
                 # bce=bce_loss.item(),
             )
 
         if self.show_metric:
-            auc_video = compute_video_level_auc(video_to_logits, video_to_labels)
-            acc_video = compute_video_level_acc(video_to_logits, video_to_labels)
+            auc_video = compute_video_level_auc(video_to_logits,
+                                                video_to_labels)
+            acc_video = compute_video_level_acc(video_to_logits,
+                                                video_to_labels)
             auc_clip = compute_clip_level_auc(video_to_logits, video_to_labels)
             acc_clip = compute_clip_level_acc(video_to_logits, video_to_labels)
 
@@ -192,21 +198,23 @@ class VideoTrainer():
             print(f'ep {loss_type} loss: {ep_loss[loss_type]:.7f}', end=' ')
         if self.show_metric:
             print(
-                f'\nclip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, video auc: {auc_video:.3f}, acc: {acc_video:.3f}')
+                f'\nclip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, video auc: {auc_video:.3f}, acc: {acc_video:.3f}'
+            )
         else:
             print()
         if self.writer:
             for loss_type in ep_loss:
-                self.writer.add_scalar(f'{loss_type}_Loss/train', ep_loss[loss_type], self.current_ep)
+                self.writer.add_scalar(f'{loss_type}_Loss/train',
+                                       ep_loss[loss_type], self.current_ep)
             if self.show_metric:
-                self.writer.add_scalar('Accuracy_clip/train',
-                                    acc_clip, self.current_ep)
-                self.writer.add_scalar(
-                    'AUC_Score_clip/train', auc_clip, self.current_ep)
-                self.writer.add_scalar(
-                    'Accuracy_video/train', acc_video, self.current_ep)
-                self.writer.add_scalar(
-                    'AUC_Score_video/train', auc_video, self.current_ep)
+                self.writer.add_scalar('Accuracy_clip/train', acc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_clip/train', auc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('Accuracy_video/train', acc_video,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_video/train', auc_video,
+                                       self.current_ep)
 
         return
 
@@ -232,9 +240,11 @@ class VideoTrainer():
                 # feature learning
                 if 'NTXent' in self.use_losses:
                     if self.model.module.setting == 'AVTS' or self.model.module.setting == 'AVM':
-                        ep_loss['NTXent_AVTS'] += output['NTXent_AVTS'].mean().item()
+                        ep_loss['NTXent_AVTS'] += output['NTXent_AVTS'].mean(
+                        ).item()
                     if self.model.module.setting == 'AVC' or self.model.module.setting == 'AVM':
-                        ep_loss['NTXent_AVC'] += output['NTXent_AVC'].mean().item()
+                        ep_loss['NTXent_AVC'] += output['NTXent_AVC'].mean(
+                        ).item()
 
                 if 'L2' in self.use_losses:
                     ep_loss['L2'] += output['EMA'].mean().item()
@@ -253,12 +263,16 @@ class VideoTrainer():
                         elif 'LRW' in vpath[i]:
                             video_id = vpath[i].split('/')[-1]
 
-                        video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
-                        video_to_labels[video_id] = label[i].view(-1).detach().cpu()
+                        video_to_logits[video_id].append(
+                            output['logits'][i].view(-1).detach().cpu())
+                        video_to_labels[video_id] = label[i].view(
+                            -1).detach().cpu()
 
         if self.show_metric:
-            auc_video = compute_video_level_auc(video_to_logits, video_to_labels)
-            acc_video = compute_video_level_acc(video_to_logits, video_to_labels)
+            auc_video = compute_video_level_auc(video_to_logits,
+                                                video_to_labels)
+            acc_video = compute_video_level_acc(video_to_logits,
+                                                video_to_labels)
             auc_clip = compute_clip_level_auc(video_to_logits, video_to_labels)
             acc_clip = compute_clip_level_acc(video_to_logits, video_to_labels)
         for loss_type in ep_loss:
@@ -266,23 +280,25 @@ class VideoTrainer():
             print(f'ep {loss_type} loss: {ep_loss[loss_type]:.7f}', end=' ')
         if self.show_metric:
             print(
-                f'\nclip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, video auc: {auc_video:.3f}, acc: {acc_video:.3f}')
+                f'\nclip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, video auc: {auc_video:.3f}, acc: {acc_video:.3f}'
+            )
         else:
             print()
         print(f'last save ep: {self.last_save_ep}')
 
         if self.writer:
             for loss_type in ep_loss:
-                self.writer.add_scalar(f'{loss_type}_Loss/val', ep_loss[loss_type], self.current_ep)
+                self.writer.add_scalar(f'{loss_type}_Loss/val',
+                                       ep_loss[loss_type], self.current_ep)
             if self.show_metric:
-                self.writer.add_scalar('Accuracy_clip/val',
-                                    acc_clip, self.current_ep)
-                self.writer.add_scalar('AUC_Score_clip/val',
-                                    auc_clip, self.current_ep)
-                self.writer.add_scalar('Accuracy_video/val',
-                                    acc_video, self.current_ep)
-                self.writer.add_scalar('AUC_Score_video/val',
-                                    auc_video, self.current_ep)
+                self.writer.add_scalar('Accuracy_clip/val', acc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_clip/val', auc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('Accuracy_video/val', acc_video,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_video/val', auc_video,
+                                       self.current_ep)
 
         if 'loss' in self.val_policy:
             loss = 0
@@ -310,11 +326,16 @@ class VideoTrainer():
 
     def save_checkpoint(self, ckp_name):
         checkpoint = {
-            'model': self.model.module.state_dict() if len(self.gpu_ids) > 1 else self.model.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
+            'model':
+            self.model.module.state_dict()
+            if len(self.gpu_ids) > 1 else self.model.state_dict(),
+            'optimizer':
+            self.optimizer.state_dict(),
             # 'scheduler': self.scheduler.state_dict(),
-            'current_val_loss': self.current_val_loss,
-            'current_ep': self.current_ep,
+            'current_val_loss':
+            self.current_val_loss,
+            'current_ep':
+            self.current_ep,
         }
         checkpoint_path = os.path.join(self.save_dir, f'{ckp_name}.pth')
         torch.save(checkpoint, checkpoint_path)
@@ -338,11 +359,13 @@ class VideoTrainer():
                 self.current_val_loss = checkpoint['current_val_loss']
             self.current_ep = checkpoint['current_ep']
 
-        print(f'$ Resume {resume_parameters/1_000_000:.3f}M Parameters From {ckp_path}')        
+        print(
+            f'$ Resume {resume_parameters/1_000_000:.3f}M Parameters From {ckp_path}'
+        )
 
     def set_parameters_by_config(self):
-        self.device = torch.device(
-            f"cuda:{self.config['train']['gpu_ids'][0]}" if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(f"cuda:{self.config['train']['gpu_ids'][0]}"
+                                   if torch.cuda.is_available() else 'cpu')
         self.gpu_ids = self.config['train']['gpu_ids']
         self.n_eps = self.config['train']['n_epochs']
         self.use_losses = self.config['train']['loss']
@@ -365,14 +388,17 @@ class VideoTrainer():
         # Dataset
         print(f'$ Loading Train Dataset...')
         train_transform = {
-            'video': Compose([
-                        ToTensorVideo(),
-                        RandomCrop((self.config['dataset']['size'], self.config['dataset']['size'])),
-                        RandomHorizontalFlip(0.5),
-                        RandomErasing(),
-                        NormalizeVideo((0.421,), (0.165,))
-                    ]),
-            'audio': None,
+            'video':
+            Compose([
+                ToTensorVideo(),
+                RandomCrop((self.config['dataset']['size'],
+                            self.config['dataset']['size'])),
+                RandomHorizontalFlip(0.5),
+                RandomErasing(),
+                NormalizeVideo((0.421, ), (0.165, ))
+            ]),
+            'audio':
+            None,
         }
         self.train_dataset = MetricLearningDataset(
             root=self.config['dataset']['root'],
@@ -388,12 +414,15 @@ class VideoTrainer():
 
         print(f'$ Loading Validation Dataset...')
         val_transform = {
-            'video': Compose([
-                        ToTensorVideo(),
-                        CenterCrop((self.config['dataset']['size'], self.config['dataset']['size'])),
-                        NormalizeVideo((0.421,), (0.165,))
-                    ]),
-            'audio': None,
+            'video':
+            Compose([
+                ToTensorVideo(),
+                CenterCrop((self.config['dataset']['size'],
+                            self.config['dataset']['size'])),
+                NormalizeVideo((0.421, ), (0.165, ))
+            ]),
+            'audio':
+            None,
         }
         self.val_dataset = MetricLearningDataset(
             root=self.config['dataset']['root'],
@@ -412,14 +441,14 @@ class VideoTrainer():
             self.train_dataset,
             batch_size=self.config['dataloader']['batch_size'],
             num_workers=self.config['dataloader']['num_workers'],
-            sampler=RandomSampler(self.train_dataset, len(self.val_dataset)*4),
+            sampler=RandomSampler(self.train_dataset,
+                                  len(self.val_dataset) * 4),
         )
         self.val_loader = DataLoader(
             self.val_dataset,
             batch_size=self.config['dataloader']['batch_size'],
             num_workers=self.config['dataloader']['num_workers'],
-            shuffle=False
-        )
+            shuffle=False)
 
         # Print Dataset Info
         print(f'Train Dataset Size: {len(self.train_dataset)}')
@@ -430,7 +459,8 @@ class VideoTrainer():
         self.model = AVMNet(
             backbone=self.config['model']['backbone'],
             last_dim=self.config['model']['last_dim'],
-            frames_per_clip=int(self.config['dataset']['fps'] * self.config['dataset']['duration']),
+            frames_per_clip=int(self.config['dataset']['fps'] *
+                                self.config['dataset']['duration']),
             predict_label=self.config['model']['predict_label'],
             use_losses=self.config['train']['loss'],
             aud_feat=self.config['dataset']['aud_feat'],
@@ -440,27 +470,45 @@ class VideoTrainer():
         )
 
         # Resume parameters
-        if self.config['train']['resume'] and os.path.isfile(self.config['train']['resume']):
-            self.resume(self.config['train']['resume'], self.config['train']['only_model'])
+        if self.config['train']['resume'] and os.path.isfile(
+                self.config['train']['resume']):
+            self.resume(self.config['train']['resume'],
+                        self.config['train']['only_model'])
 
         # Print Model Info
         print()
         max_model_name_length = max(map(len, self.config['model']['backbone']))
-        print('-'*(max_model_name_length+40))
+        print('-' * (max_model_name_length + 40))
 
-        vid_model_parameters = sum([p.numel() for p in self.model.v_encoder.parameters()])
-        print(f'  Video   Model "{self.config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M')
+        vid_model_parameters = sum(
+            [p.numel() for p in self.model.v_encoder.parameters()])
+        print(
+            f'  Video   Model "{self.config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M'
+        )
 
-        aud_model_parameters = sum([p.numel() for p in self.model.a_encoder.parameters()])
-        print(f'  Audio   Model "{self.config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M')
+        aud_model_parameters = sum(
+            [p.numel() for p in self.model.a_encoder.parameters()])
+        print(
+            f'  Audio   Model "{self.config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M'
+        )
 
         classify_model_parameters = 0
-        print(f' Classify Model "{self.config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M')
-        print('-'*(max_model_name_length+40))
+        print(
+            f' Classify Model "{self.config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M'
+        )
+        print('-' * (max_model_name_length + 40))
 
-        total_model_parameters = sum([p.numel() for p in self.model.parameters()])
-        print(f'  Total   Model {" "*(max_model_name_length+2)} Parameters: {total_model_parameters/1_000_000:.3f}M')
+        total_model_parameters = sum(
+            [p.numel() for p in self.model.parameters()])
+        print(
+            f'  Total   Model {" "*(max_model_name_length+2)} Parameters: {total_model_parameters/1_000_000:.3f}M'
+        )
 
-        trainable_parameters = sum([p.numel() for p in self.model.parameters() if p.requires_grad == True])
-        print(f'Trainable Model {" "*(max_model_name_length+2)} Parameters: {trainable_parameters/1_000_000:.3f}M')
-        print('-'*(max_model_name_length+40))
+        trainable_parameters = sum([
+            p.numel() for p in self.model.parameters()
+            if p.requires_grad == True
+        ])
+        print(
+            f'Trainable Model {" "*(max_model_name_length+2)} Parameters: {trainable_parameters/1_000_000:.3f}M'
+        )
+        print('-' * (max_model_name_length + 40))

@@ -14,18 +14,19 @@ import time
 
 
 class MetricLearningDataset(data.Dataset):
+
     def __init__(
-            self,
-            root,
-            transform,
-            mode='train',
-            fps=25,
-            duration=0.2,
-            grayscale=True,
-            shift_type='',
-            img_type='faces',
-            aud_feat='mfcc',
-            random_pick_one=False,
+        self,
+        root,
+        transform,
+        mode='train',
+        fps=25,
+        duration=0.2,
+        grayscale=True,
+        shift_type='',
+        img_type='faces',
+        aud_feat='mfcc',
+        random_pick_one=False,
     ):
         self.mode = mode
         self.fps = fps
@@ -57,21 +58,29 @@ class MetricLearningDataset(data.Dataset):
         else:
             raise NotImplementedError
 
-        end_frame = 29-self.frames_per_clip+1
-        start_frame = np.random.randint(0, skip + end_frame%skip)
+        end_frame = 29 - self.frames_per_clip + 1
+        start_frame = np.random.randint(0, skip + end_frame % skip)
 
         st = time.time()
-        all_imgs = torch.from_numpy(self.load_img([os.path.join(vpath, f'{i:05d}.jpg') for i in range(start_frame, end_frame+self.frames_per_clip-1)]))
+        all_imgs = torch.from_numpy(
+            self.load_img([
+                os.path.join(vpath, f'{i:05d}.jpg')
+                for i in range(start_frame, end_frame + self.frames_per_clip -
+                               1)
+            ]))
         vids = []
         for frame in range(start_frame, end_frame, skip):
             if self.random_pick_one:
                 if self.mode == 'train':
-                    selected_frame = np.random.randint(low=frame, high=frame+self.frames_per_clip, size=1)[0]
+                    selected_frame = np.random.randint(low=frame,
+                                                       high=frame +
+                                                       self.frames_per_clip,
+                                                       size=1)[0]
                 else:
-                    selected_frame = frame+self.frames_per_clip//2
-                vid = all_imgs[selected_frame:selected_frame+1, :, :]
+                    selected_frame = frame + self.frames_per_clip // 2
+                vid = all_imgs[selected_frame:selected_frame + 1, :, :]
             else:
-                vid = all_imgs[frame:frame+self.frames_per_clip, :, :]
+                vid = all_imgs[frame:frame + self.frames_per_clip, :, :]
             if self.grayscale:
                 vid = vid.unsqueeze(-1)
             if self.transform is not None and 'video' in self.transform:
@@ -88,8 +97,8 @@ class MetricLearningDataset(data.Dataset):
         # audio = np.load(aud_path)
         sr = 16000
         for frame in range(start_frame, end_frame, skip):
-            start_bit = int(frame*sr/self.fps)
-            end_bit = int((frame + self.frames_per_clip)*sr/self.fps)
+            start_bit = int(frame * sr / self.fps)
+            end_bit = int((frame + self.frames_per_clip) * sr / self.fps)
             cut_audio = audio[start_bit:end_bit]
 
             if self.aud_feat == 'mfcc':
@@ -107,12 +116,14 @@ class MetricLearningDataset(data.Dataset):
 
         # label
         label = torch.arange(len(vids)).repeat(2)
-        
+
         return vids, auds, label, vpath
 
     def load_img(self, img_paths):
-        vid = np.stack([np.array(pil_loader(img_path, self.grayscale))
-                         for img_path in img_paths])
+        vid = np.stack([
+            np.array(pil_loader(img_path, self.grayscale))
+            for img_path in img_paths
+        ])
 
         return vid
 
@@ -128,9 +139,11 @@ class MetricLearningDataset(data.Dataset):
                 continue
             for dir_name in os.listdir(os.path.join(img_root, c, self.mode)):
                 img_dir = os.path.join(img_root, c, self.mode, dir_name)
-                aud_path = os.path.join(aud_root, c, self.mode, dir_name+'.wav')
+                aud_path = os.path.join(aud_root, c, self.mode,
+                                        dir_name + '.wav')
                 # aud_path = os.path.join(aud_root, c, self.mode, dir_name+'.npy')
-                if len(os.listdir(img_dir)) != 29 or not os.path.exists(aud_path):
+                if len(os.listdir(img_dir)) != 29 or not os.path.exists(
+                        aud_path):
                     continue
                 video_info.append([img_dir, aud_path])
         return video_info

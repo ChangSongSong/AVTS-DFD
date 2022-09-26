@@ -13,7 +13,7 @@ def main(config_path):
     with open(config_path) as f:
         config = yaml.full_load(f)
         pprint(config)
-    
+
     mode = config['main']['mode']
     phase = config['main']['phase']
 
@@ -32,6 +32,9 @@ def main(config_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", required=True, help="path to configuration file")
+    parser.add_argument("-c",
+                        "--config",
+                        required=True,
+                        help="path to configuration file")
     args = vars(parser.parse_args())
     main(args['config'])

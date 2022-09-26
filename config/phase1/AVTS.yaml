@@ -12,18 +12,19 @@ train:
     only_model: false
     loss: ['NTXent']
     setting: 'AVTS'
-    save_dir: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2'
+    # save_dir: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2'
+    save_dir: '/home/ernestchu/scratch3/logs/AVM-FFD'
     save_frequency: 1
     patience: 0
     val_policy: ['loss']
     show_metric: false
 
-test:
-    mode: 'VA'
-    gpu_ids: [0]
-    predict: 'fc'
-    resume: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2/best.pth'
-    save_dir: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2'
+# test:
+#     mode: 'VA'
+#     gpu_ids: [0]
+#     predict: 'fc'
+#     resume: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2/best.pth'
+#     save_dir: '/scratch3/users/cssung/LRW/output/AVTS_all_c3dr50_vgg_768_len72e-2'
 
 dataset:
     size: 224
@@ -34,10 +35,11 @@ dataset:
     shift_type: 'all'
     img_type: 'faces'
     aud_feat: 'mfcc'
-    root: '/scratch4/users/cssung/Datasets/LRW/'
+    # root: '/scratch4/users/cssung/Datasets/LRW/'
+    root: '/home/ernestchu/scratch3/datasets/LRW/'
 
 dataloader:
-    batch_size: 10
+    batch_size: 1
     num_workers: 8
 
 model:

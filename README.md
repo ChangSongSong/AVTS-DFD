@@ -14,3 +14,10 @@ pip install -r requirement.txt
 ```sh
 python src/main.py -c config/config/phase1/AVTS.yaml 
 ```
+
+### Development
+
+#### Formatting code
+```
+yapf -ir .
+```

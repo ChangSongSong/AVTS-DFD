@@ -15,7 +15,25 @@ from models.temporal_transformer import TemporalTransformer
 
 
 class FakeNet(nn.Module):
-    def __init__(self, backbone, img_in_dim, last_dim, frames_per_clip, num_classes=1, fake_classes=1, mode='VA', relu_type = 'prelu', predict_label=False, predict_fake_label=False, modality_embedding=False, use_losses=[], aud_feat='mfcc', concat_type='concat', normalized='', logit_adjustment=None, weight_decay=1e-4):
+
+    def __init__(self,
+                 backbone,
+                 img_in_dim,
+                 last_dim,
+                 frames_per_clip,
+                 num_classes=1,
+                 fake_classes=1,
+                 mode='VA',
+                 relu_type='prelu',
+                 predict_label=False,
+                 predict_fake_label=False,
+                 modality_embedding=False,
+                 use_losses=[],
+                 aud_feat='mfcc',
+                 concat_type='concat',
+                 normalized='',
+                 logit_adjustment=None,
+                 weight_decay=1e-4):
         super(FakeNet, self).__init__()
 
         self.backbone = backbone
@@ -38,12 +56,14 @@ class FakeNet(nn.Module):
 
         # video
         if 'V' in self.mode:
-            self.v_encoder = self._select_backbone('v_encoder', self.backbone[0])
+            self.v_encoder = self._select_backbone('v_encoder',
+                                                   self.backbone[0])
 
         # audio
         if 'A' in self.mode:
-            self.a_encoder = self._select_backbone('a_encoder', self.backbone[1])
-            
+            self.a_encoder = self._select_backbone('a_encoder',
+                                                   self.backbone[1])
+
         if self.predict_label:
             if self.mode == 'VA':
                 # Normalized
@@ -54,13 +74,20 @@ class FakeNet(nn.Module):
                     self.v_normalized = nn.LayerNorm(self.last_dim)
                     self.a_normalized = nn.LayerNorm(self.last_dim)
 
-                self.temporal_classifier = self._select_backbone('temporal_classifier', self.backbone[2])
+                self.temporal_classifier = self._select_backbone(
+                    'temporal_classifier', self.backbone[2])
 
         # Loss
-        self.CELoss = nn.BCEWithLogitsLoss() if self.num_classes == 1 else nn.CrossEntropyLoss()
+        self.CELoss = nn.BCEWithLogitsLoss(
+        ) if self.num_classes == 1 else nn.CrossEntropyLoss()
         self.FakeTypeLoss = nn.CrossEntropyLoss(ignore_index=-1)
 
-    def forward(self, x, alpha=0, y=None, fake_type_label=None, out_feat=False):
+    def forward(self,
+                x,
+                alpha=0,
+                y=None,
+                fake_type_label=None,
+                out_feat=False):
         output = {}
 
         if self.mode == 'V':
@@ -90,8 +117,8 @@ class FakeNet(nn.Module):
                 # normalized before concatenate
                 if self.normalized:
                     b, fs, d = v_feats.shape
-                    v_feats = v_feats.reshape(b*fs, d)
-                    a_feats = a_feats.reshape(b*fs, d)
+                    v_feats = v_feats.reshape(b * fs, d)
+                    a_feats = a_feats.reshape(b * fs, d)
 
                     if self.normalized == 'batchnorm' or self.normalized == 'layernorm':
                         # batch normalized or layer normalized
@@ -105,16 +132,18 @@ class FakeNet(nn.Module):
 
                     v_feats = v_feats.reshape(b, fs, d)
                     a_feats = a_feats.reshape(b, fs, d)
-                
 
                 if self.concat_type == 'minus':
                     feats = v_feats - a_feats
                 elif self.concat_type == 'concat':
                     feats = torch.cat((v_feats, a_feats), -1)
                 elif self.concat_type == 'cosine':
-                    feats = v_feats * a_feats / (torch.norm(v_feats, dim=(1, 2), keepdim=True) * torch.norm(a_feats, dim=(1, 2), keepdim=True))
+                    feats = v_feats * a_feats / (
+                        torch.norm(v_feats, dim=(1, 2), keepdim=True) *
+                        torch.norm(a_feats, dim=(1, 2), keepdim=True))
                 if fake_type_label is not None:
-                    logits, fake_logits, cls_feature = self.forward_classification(feats, True, alpha)
+                    logits, fake_logits, cls_feature = self.forward_classification(
+                        feats, True, alpha)
                     output['logits'] = logits
                     output['fake_logits'] = fake_logits
                 else:
@@ -136,7 +165,7 @@ class FakeNet(nn.Module):
 
                 loss_r = 0
                 for parameter in self.temporal_classifier.parameters():
-                    loss_r += torch.sum(parameter ** 2)
+                    loss_r += torch.sum(parameter**2)
                 bce_loss = bce_loss + self.weight_decay * loss_r
             else:
                 bce_loss = self.CELoss(logits, y)
@@ -170,47 +199,55 @@ class FakeNet(nn.Module):
     def _select_backbone(self, model_type, model_name):
         if model_type == 'v_encoder':
             if model_name == 'c3d_resnet18':
-                m = C3dResnet18(in_dim=self.img_in_dim, last_dim=self.last_dim, relu_type=self.relu_type)
+                m = C3dResnet18(in_dim=self.img_in_dim,
+                                last_dim=self.last_dim,
+                                relu_type=self.relu_type)
             elif model_name == 'vgg_transformer':
                 m = VGGTransformer(
-                                    in_dim=self.img_in_dim,
-                                    frames_per_clip=self.frames_per_clip,
-                                    last_dim=self.last_dim,
-                                    dropout = 0.,
-                                    emb_dropout = 0.,)
+                    in_dim=self.img_in_dim,
+                    frames_per_clip=self.frames_per_clip,
+                    last_dim=self.last_dim,
+                    dropout=0.,
+                    emb_dropout=0.,
+                )
             elif model_name == 'vivit':
-                m = ViViT(
-                                    image_size=224,
-                                    patch_size=16,
-                                    num_frames=self.frames_per_clip,
-                                    in_channels=self.img_in_dim,
-                                    dim=self.last_dim,
-                                    depth=3,
-                                    heads=12)
+                m = ViViT(image_size=224,
+                          patch_size=16,
+                          num_frames=self.frames_per_clip,
+                          in_channels=self.img_in_dim,
+                          dim=self.last_dim,
+                          depth=3,
+                          heads=12)
             elif model_name == 'c3dr50':
-                m = C3DR50(
-                                    in_channels=self.img_in_dim,
-                                    frames_per_clip=self.frames_per_clip,
-                                    block_inplanes=[self.last_dim//16, self.last_dim//8, self.last_dim//4, self.last_dim//2]
-                                    )
+                m = C3DR50(in_channels=self.img_in_dim,
+                           frames_per_clip=self.frames_per_clip,
+                           block_inplanes=[
+                               self.last_dim // 16, self.last_dim // 8,
+                               self.last_dim // 4, self.last_dim // 2
+                           ])
             elif model_name == 'resnet34':
-                m = ResNet34(
-                                    in_channels=self.img_in_dim,
-                                    num_filters=[self.last_dim//8, self.last_dim//4, self.last_dim//2, self.last_dim])
+                m = ResNet34(in_channels=self.img_in_dim,
+                             num_filters=[
+                                 self.last_dim // 8, self.last_dim // 4,
+                                 self.last_dim // 2, self.last_dim
+                             ])
             else:
                 raise NotImplementedError
         elif model_type == 'a_encoder':
             if self.aud_feat == 'mfcc':
                 if model_name == 'vgg':
                     m = VGG(
-                                        last_dim=self.last_dim,
-                                        temporal_half=True,  # for c3dr50
-                                    )
+                        last_dim=self.last_dim,
+                        temporal_half=True,  # for c3dr50
+                    )
                 elif model_name == 'seresnet18':
                     m = SEResnet(
-                                            layers=[2, 2, 2, 2],
-                                            num_filters=[self.last_dim//8, self.last_dim//4, self.last_dim//2, self.last_dim],
-                                        )
+                        layers=[2, 2, 2, 2],
+                        num_filters=[
+                            self.last_dim // 8, self.last_dim // 4,
+                            self.last_dim // 2, self.last_dim
+                        ],
+                    )
                 else:
                     raise NotImplementedError
             elif self.aud_feat == 'melspectrogram':
@@ -224,7 +261,7 @@ class FakeNet(nn.Module):
                 raise NotImplementedError(f'{self.aud_feat}')
         elif model_type == 'temporal_classifier':
 
-            dim = self.last_dim*2 if self.concat_type == 'concat' and self.mode == 'VA' else self.last_dim
+            dim = self.last_dim * 2 if self.concat_type == 'concat' and self.mode == 'VA' else self.last_dim
 
             if model_name == 'transformer':
                 m = TemporalTransformer(
@@ -252,8 +289,9 @@ class FakeNet(nn.Module):
                 m = MultiscaleMultibranchTCN(
                     input_size=dim,
                     num_channels=[
-                        hidden_dim * len(tcn_options["kernel_size"]) * tcn_options["width_mult"]]
-                    * tcn_options["num_layers"],
+                        hidden_dim * len(tcn_options["kernel_size"]) *
+                        tcn_options["width_mult"]
+                    ] * tcn_options["num_layers"],
                     num_classes=self.num_classes,
                     tcn_options=tcn_options,
                     dropout=tcn_options["dropout"],
@@ -261,17 +299,11 @@ class FakeNet(nn.Module):
                     dwpw=tcn_options["dwpw"],
                 )
             elif model_name == 'mlp':
-                m = nn.Sequential(
-                    nn.Flatten(),
-                    nn.Linear(dim, dim),
-                    nn.Dropout(0.1),
-                    nn.ReLU(),
-                    nn.Linear(dim, dim),
-                    nn.Dropout(0.1),
-                    nn.ReLU(),
-                    nn.Linear(dim, self.num_classes)
-                )
+                m = nn.Sequential(nn.Flatten(), nn.Linear(dim, dim),
+                                  nn.Dropout(0.1), nn.ReLU(),
+                                  nn.Linear(dim, dim), nn.Dropout(0.1),
+                                  nn.ReLU(), nn.Linear(dim, self.num_classes))
             else:
                 raise NotImplementedError
-        
+
         return m

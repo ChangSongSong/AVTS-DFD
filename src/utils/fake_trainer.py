@@ -16,7 +16,9 @@ from dataset.FakeAVCeleb_dataset import FakeAVCelebDataset
 from dataset.samplers import ImbalancedDatasetSampler
 from utils.utils import *
 
+
 class FakeTrainer():
+
     def __init__(self, config):
         self.config = config
         # Config
@@ -30,7 +32,7 @@ class FakeTrainer():
             self.logit_adjustment = self.compute_adjustment()
         else:
             self.logit_adjustment = None
-        
+
         # Model
         print('\n--- Model ---')
         self.load_model()
@@ -43,13 +45,13 @@ class FakeTrainer():
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
             config['train']['n_epochs'],
-            eta_min=config['optimizer']['lr']/100,
-            last_epoch=-1
-        )
+            eta_min=config['optimizer']['lr'] / 100,
+            last_epoch=-1)
         self.scaler = amp.GradScaler()
 
         # Move to GPU
-        self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
+        self.model = torch.nn.DataParallel(
+            self.model, device_ids=config['train']['gpu_ids']).to(self.device)
 
         # Tensorboard
         if config['tensorboard']['comment']:
@@ -63,7 +65,7 @@ class FakeTrainer():
 
     def train(self):
         print('\n--- Start Training ---')
-        for ep in range(self.current_ep+1, self.n_eps):
+        for ep in range(self.current_ep + 1, self.n_eps):
             print(f'\nEpoch {ep}')
             self.current_ep = ep
             self.train_one_epoch()
@@ -75,11 +77,9 @@ class FakeTrainer():
                 break
 
     def train_one_epoch(self):
-        loop = tqdm(
-            self.train_loader,
-            leave=True,
-            desc=f'Train Epoch:{self.current_ep}/{self.n_eps}'
-        )
+        loop = tqdm(self.train_loader,
+                    leave=True,
+                    desc=f'Train Epoch:{self.current_ep}/{self.n_eps}')
 
         ep_loss = defaultdict(int)
 
@@ -94,24 +94,30 @@ class FakeTrainer():
             x = list(map(lambda x: x.to(self.device, dtype=torch.float), x))
             label = label.to(self.device)
 
-            p = float(it + self.current_ep * len(self.train_loader)) / self.n_eps / len(self.train_loader)
+            p = float(it + self.current_ep * len(self.train_loader)
+                      ) / self.n_eps / len(self.train_loader)
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
 
             total_loss = 0
 
             with amp.autocast():
-                output = self.model(x, y=label, alpha=alpha, fake_type_label=fake_type_label if self.predict_fake_label else None)
+                output = self.model(x,
+                                    y=label,
+                                    alpha=alpha,
+                                    fake_type_label=fake_type_label
+                                    if self.predict_fake_label else None)
 
             # supervised learning
             if 'BCE' in self.use_losses:
                 bce_loss = output['BCE'].mean()
                 total_loss += bce_loss
-                ep_loss['BCE'] += bce_loss.item()/len(self.train_loader)
+                ep_loss['BCE'] += bce_loss.item() / len(self.train_loader)
 
             if self.predict_fake_label:
                 fake_type_loss = output['FakeType'].mean()
                 total_loss += fake_type_loss
-                ep_loss['FakeType'] += fake_type_loss.item()/len(self.train_loader)
+                ep_loss['FakeType'] += fake_type_loss.item() / len(
+                    self.train_loader)
 
             self.optimizer.zero_grad()
 
@@ -131,17 +137,22 @@ class FakeTrainer():
                     elif 'LRW' in vpath[i]:
                         video_id = vpath[i].split('/')[-1]
 
-                    video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
-                    video_to_labels[video_id] = label[i].view(-1).detach().cpu()
+                    video_to_logits[video_id].append(
+                        output['logits'][i].view(-1).detach().cpu())
+                    video_to_labels[video_id] = label[i].view(
+                        -1).detach().cpu()
 
             loop.set_postfix(
                 bce=bce_loss.item(),
-                fake_da=fake_type_loss.item() if self.predict_fake_label else 0,
+                fake_da=fake_type_loss.item()
+                if self.predict_fake_label else 0,
             )
 
         if self.show_metric:
-            auc_video = compute_video_level_auc(video_to_logits, video_to_labels)
-            acc_video = compute_video_level_acc(video_to_logits, video_to_labels)
+            auc_video = compute_video_level_auc(video_to_logits,
+                                                video_to_labels)
+            acc_video = compute_video_level_acc(video_to_logits,
+                                                video_to_labels)
             auc_clip = compute_clip_level_auc(video_to_logits, video_to_labels)
             acc_clip = compute_clip_level_acc(video_to_logits, video_to_labels)
 
@@ -150,20 +161,24 @@ class FakeTrainer():
             print(f'ep {loss_type} loss: {ep_loss[loss_type]:.3f}', end=' ')
         if self.show_metric:
             print(
-                f'\nClip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, Video auc: {auc_video:.3f}, acc: {acc_video:.3f}')
+                f'\nClip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, Video auc: {auc_video:.3f}, acc: {acc_video:.3f}'
+            )
         else:
             print()
         if self.writer:
-            self.writer.add_scalar('All_Loss/train', sum([ep_loss[t] for t in ep_loss])/len(ep_loss), self.current_ep)
+            self.writer.add_scalar(
+                'All_Loss/train',
+                sum([ep_loss[t] for t in ep_loss]) / len(ep_loss),
+                self.current_ep)
             if self.show_metric:
-                self.writer.add_scalar('Accuracy_clip/train',
-                                    acc_clip, self.current_ep)
-                self.writer.add_scalar(
-                    'AUC_Score_clip/train', auc_clip, self.current_ep)
-                self.writer.add_scalar(
-                    'Accuracy_video/train', acc_video, self.current_ep)
-                self.writer.add_scalar(
-                    'AUC_Score_video/train', auc_video, self.current_ep)        
+                self.writer.add_scalar('Accuracy_clip/train', acc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_clip/train', auc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('Accuracy_video/train', acc_video,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_video/train', auc_video,
+                                       self.current_ep)
 
         return
 
@@ -181,7 +196,8 @@ class FakeTrainer():
             for it, data in enumerate(tqdm(self.val_loader)):
                 x, label, vpath, _ = data
 
-                x = list(map(lambda x: x.to(self.device, dtype=torch.float), x))
+                x = list(map(lambda x: x.to(self.device, dtype=torch.float),
+                             x))
                 label = label.to(self.device)
 
                 with amp.autocast():
@@ -190,7 +206,7 @@ class FakeTrainer():
                 # supervised learning
                 if 'BCE' in self.use_losses:
                     bce_loss = output['BCE'].mean()
-                    ep_loss['BCE'] += bce_loss.item()/len(self.val_loader)
+                    ep_loss['BCE'] += bce_loss.item() / len(self.val_loader)
 
                 if self.show_metric:
                     for i in range(len(vpath)):
@@ -203,23 +219,31 @@ class FakeTrainer():
                         elif 'LRW' in vpath[i]:
                             video_id = vpath[i].split('/')[-1]
 
-                        video_to_logits[video_id].append(output['logits'][i].view(-1).detach().cpu())
-                        video_to_labels[video_id] = label[i].view(-1).detach().cpu()
-                        video_per_type_to_logits[video_type][video_id].append(output['logits'][i].view(-1).detach().cpu())
-                        video_per_type_to_labels[video_type][video_id] = label[i].view(-1).detach().cpu()
+                        video_to_logits[video_id].append(
+                            output['logits'][i].view(-1).detach().cpu())
+                        video_to_labels[video_id] = label[i].view(
+                            -1).detach().cpu()
+                        video_per_type_to_logits[video_type][video_id].append(
+                            output['logits'][i].view(-1).detach().cpu())
+                        video_per_type_to_labels[video_type][video_id] = label[
+                            i].view(-1).detach().cpu()
 
         if self.show_metric:
-            auc_video = compute_video_level_auc(video_to_logits, video_to_labels)
-            acc_video = compute_video_level_acc(video_to_logits, video_to_labels)
+            auc_video = compute_video_level_auc(video_to_logits,
+                                                video_to_labels)
+            acc_video = compute_video_level_acc(video_to_logits,
+                                                video_to_labels)
             auc_clip = compute_clip_level_auc(video_to_logits, video_to_labels)
             acc_clip = compute_clip_level_acc(video_to_logits, video_to_labels)
         for loss_type in ep_loss:
             print(f'ep {loss_type} loss: {ep_loss[loss_type]:.3f}', end=' ')
         if self.show_metric:
             print(
-                f'\nClip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, Video auc: {auc_video:.3f}, acc: {acc_video:.3f}')
+                f'\nClip auc: {auc_clip:.3f}, acc: {acc_clip:.3f}, Video auc: {auc_video:.3f}, acc: {acc_video:.3f}'
+            )
             for t in video_per_type_to_logits:
-                acc = compute_video_level_acc(video_per_type_to_logits[t], video_per_type_to_labels[t])
+                acc = compute_video_level_acc(video_per_type_to_logits[t],
+                                              video_per_type_to_labels[t])
                 print(f'Type {t} acc: {acc:.3f}')
         else:
             print()
@@ -230,16 +254,19 @@ class FakeTrainer():
             print(f'Best auc: {self.current_val_auc:.3f}')
 
         if self.writer:
-            self.writer.add_scalar('All_Loss/val', sum([ep_loss[t] for t in ep_loss])/len(ep_loss), self.current_ep)
+            self.writer.add_scalar(
+                'All_Loss/val',
+                sum([ep_loss[t] for t in ep_loss]) / len(ep_loss),
+                self.current_ep)
             if self.show_metric:
-                self.writer.add_scalar('Accuracy_clip/val',
-                                    acc_clip, self.current_ep)
-                self.writer.add_scalar('AUC_Score_clip/val',
-                                    auc_clip, self.current_ep)
-                self.writer.add_scalar('Accuracy_video/val',
-                                    acc_video, self.current_ep)
-                self.writer.add_scalar('AUC_Score_video/val',
-                                    auc_video, self.current_ep)
+                self.writer.add_scalar('Accuracy_clip/val', acc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_clip/val', auc_clip,
+                                       self.current_ep)
+                self.writer.add_scalar('Accuracy_video/val', acc_video,
+                                       self.current_ep)
+                self.writer.add_scalar('AUC_Score_video/val', auc_video,
+                                       self.current_ep)
 
         if 'loss' in self.val_policy:
             if ep_loss[self.use_losses[0]] < self.current_val_loss:
@@ -259,11 +286,14 @@ class FakeTrainer():
 
     def save_checkpoint(self, ckp_name):
         checkpoint = {
-            'model': self.model.module.state_dict() if len(self.gpu_ids) > 1 else self.model.state_dict(),
+            'model':
+            self.model.module.state_dict()
+            if len(self.gpu_ids) > 1 else self.model.state_dict(),
             # 'optimizer': self.optimizer.state_dict(),
             # 'scheduler': self.scheduler.state_dict(),
             # 'current_val_loss': self.current_val_loss,
-            'current_ep': self.current_ep,
+            'current_ep':
+            self.current_ep,
         }
         checkpoint_path = os.path.join(self.save_dir, f'{ckp_name}.pth')
         torch.save(checkpoint, checkpoint_path)
@@ -289,11 +319,13 @@ class FakeTrainer():
             #     self.current_val_loss = checkpoint['current_val_loss']
             self.current_ep = checkpoint['current_ep']
 
-        print(f'$ Resume {resume_parameters/1_000_000:.3f}M Parameters From {ckp_path}')
+        print(
+            f'$ Resume {resume_parameters/1_000_000:.3f}M Parameters From {ckp_path}'
+        )
 
     def set_parameters_by_config(self):
-        self.device = torch.device(
-            f"cuda:{self.config['train']['gpu_ids'][0]}" if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(f"cuda:{self.config['train']['gpu_ids'][0]}"
+                                   if torch.cuda.is_available() else 'cpu')
         self.gpu_ids = self.config['train']['gpu_ids']
         self.n_eps = self.config['train']['n_epochs']
         self.save_dir = self.config['train']['save_dir']
@@ -310,7 +342,8 @@ class FakeTrainer():
         self.orig_lr = self.config['optimizer']['lr']
         self.show_metric = self.config['train']['show_metric']
         self.predict_fake_label = self.config['model']['predict_fake_label']
-        self.frames_per_clip = int(self.config['dataset']['fps'] * self.config['dataset']['duration'])
+        self.frames_per_clip = int(self.config['dataset']['fps'] *
+                                   self.config['dataset']['duration'])
 
     def load_dataset(self):
         # Dataset
@@ -376,7 +409,11 @@ class FakeTrainer():
             self.train_dataset,
             batch_size=self.config['dataloader']['batch_size'],
             num_workers=self.config['dataloader']['num_workers'],
-            sampler=ImbalancedDatasetSampler(self.train_dataset, num_samples=max(len(self.train_dataset)//self.frames_per_clip, self.config['dataloader']['batch_size'])),
+            sampler=ImbalancedDatasetSampler(
+                self.train_dataset,
+                num_samples=max(
+                    len(self.train_dataset) // self.frames_per_clip,
+                    self.config['dataloader']['batch_size'])),
         )
         self.val_loader = DataLoader(
             self.val_dataset,
@@ -397,7 +434,8 @@ class FakeTrainer():
             backbone=self.config['model']['backbone'],
             img_in_dim=1 if self.config['dataset']['grayscale'] else 3,
             last_dim=self.config['model']['last_dim'],
-            frames_per_clip=int(self.config['dataset']['fps'] * self.config['dataset']['duration']),
+            frames_per_clip=int(self.config['dataset']['fps'] *
+                                self.config['dataset']['duration']),
             mode=self.config['train']['mode'],
             predict_label=self.config['model']['predict_label'],
             use_losses=self.config['train']['loss'],
@@ -412,9 +450,11 @@ class FakeTrainer():
         # Resume Model
         if self.config['train']['resume']:
             if os.path.isfile(self.config['train']['resume']):
-                self.resume(self.config['train']['resume'], self.config['train']['only_model'])
+                self.resume(self.config['train']['resume'],
+                            self.config['train']['only_model'])
             else:
-                raise FileNotFoundError(f"{self.config['train']['resume']} is not found")
+                raise FileNotFoundError(
+                    f"{self.config['train']['resume']} is not found")
 
         # Freeze Feature Extrator
         if self.config['train']['freeze_feature_extractor']:
@@ -429,24 +469,43 @@ class FakeTrainer():
 
         # Print Model Info
         max_model_name_length = max(map(len, self.config['model']['backbone']))
-        print('-'*(max_model_name_length+40))
+        print('-' * (max_model_name_length + 40))
 
-        vid_model_parameters = sum([p.numel() for p in self.model.v_encoder.parameters()]) if 'V' in self.config['train']['mode'] else 0
-        print(f'  Video   Model "{self.config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M')
+        vid_model_parameters = sum([
+            p.numel() for p in self.model.v_encoder.parameters()
+        ]) if 'V' in self.config['train']['mode'] else 0
+        print(
+            f'  Video   Model "{self.config["model"]["backbone"][0]:^{max_model_name_length}}" Parameters: {vid_model_parameters/1_000_000:.3f}M'
+        )
 
-        aud_model_parameters = sum([p.numel() for p in self.model.a_encoder.parameters()]) if 'A' in self.config['train']['mode'] else 0
-        print(f'  Audio   Model "{self.config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M')
+        aud_model_parameters = sum([
+            p.numel() for p in self.model.a_encoder.parameters()
+        ]) if 'A' in self.config['train']['mode'] else 0
+        print(
+            f'  Audio   Model "{self.config["model"]["backbone"][1]:^{max_model_name_length}}" Parameters: {aud_model_parameters/1_000_000:.3f}M'
+        )
 
-        classify_model_parameters = sum([p.numel() for p in self.model.temporal_classifier.parameters()])
-        print(f' Classify Model "{self.config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M')
-        print('-'*(max_model_name_length+40))
+        classify_model_parameters = sum(
+            [p.numel() for p in self.model.temporal_classifier.parameters()])
+        print(
+            f' Classify Model "{self.config["model"]["backbone"][2]:^{max_model_name_length}}" Parameters: {classify_model_parameters/1_000_000:.3f}M'
+        )
+        print('-' * (max_model_name_length + 40))
 
-        total_model_parameters = sum([p.numel() for p in self.model.parameters()])
-        print(f'  Total   Model {" "*(max_model_name_length+2)} Parameters: {total_model_parameters/1_000_000:.3f}M')
+        total_model_parameters = sum(
+            [p.numel() for p in self.model.parameters()])
+        print(
+            f'  Total   Model {" "*(max_model_name_length+2)} Parameters: {total_model_parameters/1_000_000:.3f}M'
+        )
 
-        trainable_parameters = sum([p.numel() for p in self.model.parameters() if p.requires_grad == True])
-        print(f'Trainable Model {" "*(max_model_name_length+2)} Parameters: {trainable_parameters/1_000_000:.3f}M')
-        print('-'*(max_model_name_length+40))
+        trainable_parameters = sum([
+            p.numel() for p in self.model.parameters()
+            if p.requires_grad == True
+        ])
+        print(
+            f'Trainable Model {" "*(max_model_name_length+2)} Parameters: {trainable_parameters/1_000_000:.3f}M'
+        )
+        print('-' * (max_model_name_length + 40))
 
     def compute_adjustment(self, tro=1.0):
         """compute the base probabilities"""
@@ -460,7 +519,7 @@ class FakeTrainer():
         label_freq = dict(sorted(label_freq.items()))
         label_freq_array = np.array(list(label_freq.values()))
         label_freq_array = label_freq_array / label_freq_array.sum()
-        adjustments = np.log(label_freq_array ** tro + 1e-12)
+        adjustments = np.log(label_freq_array**tro + 1e-12)
         adjustments = torch.from_numpy(adjustments)
         # adjustments = adjustments.to(self.device)
         print('Logit adjustments: ', adjustments)

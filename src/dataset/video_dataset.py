@@ -10,20 +10,22 @@ from scipy.io import wavfile
 
 from dataset.dataset_utils import pil_loader
 
+
 class VideoDataset(data.Dataset):
+
     def __init__(
-            self,
-            root,
-            transform,
-            mode='train',
-            input_mode='VA',
-            fps=25,
-            duration=1,
-            sample_rate=1,
-            grayscale=True,
-            augmented_type='',
-            shift_type='',
-            aud_feat='wav',
+        self,
+        root,
+        transform,
+        mode='train',
+        input_mode='VA',
+        fps=25,
+        duration=1,
+        sample_rate=1,
+        grayscale=True,
+        augmented_type='',
+        shift_type='',
+        aud_feat='wav',
     ):
         self.mode = mode
         self.input_mode = input_mode
@@ -41,11 +43,13 @@ class VideoDataset(data.Dataset):
     def __getitem__(self, index):
         # input info
         if self.mode == 'train':
-            vpath, audiopath, label, ok_frames, video_fps = self.video_info.iloc[index]
+            vpath, audiopath, label, ok_frames, video_fps = self.video_info.iloc[
+                index]
             ok_frames = list(eval(ok_frames))  # turn string to list
             start_frame = np.random.choice(ok_frames, 1)[0]
         elif self.mode == 'val' or self.mode == 'test':
-            vpath, audiopath, label, start_frame, video_fps = self.video_info.iloc[index]
+            vpath, audiopath, label, start_frame, video_fps = self.video_info.iloc[
+                index]
 
         if self.augmented_type in ['sync']:
             if self.mode == 'train':
@@ -98,24 +102,27 @@ class VideoDataset(data.Dataset):
         return data
 
     def choose_frames(self, vpath, start_frame, video_fps):
-        end_frame = start_frame + int(video_fps*self.duration)
-        img_paths = [os.path.join(vpath, f'{i:05d}.jpg') for i in range(
-            start_frame, end_frame, self.sample_rate)]
+        end_frame = start_frame + int(video_fps * self.duration)
+        img_paths = [
+            os.path.join(vpath, f'{i:05d}.jpg')
+            for i in range(start_frame, end_frame, self.sample_rate)
+        ]
         img_paths = self.check_img_paths_valid(img_paths)
 
         return img_paths
 
     def load_img(self, img_paths):
-        vid = np.stack([np.array(pil_loader(img_path, self.grayscale))
-                         for img_path in img_paths])
+        vid = np.stack([
+            np.array(pil_loader(img_path, self.grayscale))
+            for img_path in img_paths
+        ])
         if self.augmented_type == 'flip' and self.augmented_signal:
             start_flip_idx = np.random.randint(
                 0, self.fps * self.duration - self.flip_num + 1)
             end_flip_idx = start_flip_idx + self.flip_num
-            vid = np.concatenate(
-                (vid[:start_flip_idx],
-                 np.flip(vid[start_flip_idx:end_flip_idx], 2).copy(),
-                 vid[end_flip_idx:]), 0)
+            vid = np.concatenate((vid[:start_flip_idx],
+                                  np.flip(vid[start_flip_idx:end_flip_idx],
+                                          2).copy(), vid[end_flip_idx:]), 0)
 
         return vid
 
@@ -155,15 +162,33 @@ class VideoDataset(data.Dataset):
                     aud_len_ms = int(min(audio_length * 1000, 1120))  # for LRW
 
                 # decide shift range
-                start_time_ms = int(start_time*1000)
-                duration_ms = int(self.duration*1000)
-                frame_ms = int(1000/self.fps)
+                start_time_ms = int(start_time * 1000)
+                duration_ms = int(self.duration * 1000)
+                frame_ms = int(1000 / self.fps)
                 if self.shift_type == 'non-overlap':
-                    shift_choices = [s/1000 for s in range(0, start_time_ms-duration_ms+1, frame_ms)] + [s/1000 for s in range(start_time_ms+duration_ms, aud_len_ms-duration_ms+1, frame_ms)]
+                    shift_choices = [
+                        s / 1000
+                        for s in range(0, start_time_ms - duration_ms +
+                                       1, frame_ms)
+                    ] + [
+                        s / 1000 for s in range(start_time_ms +
+                                                duration_ms, aud_len_ms -
+                                                duration_ms + 1, frame_ms)
+                    ]
                 elif self.shift_type == 'overlap':
-                    shift_choices = [s/1000 for s in range(start_time_ms-duration_ms+frame_ms, start_time_ms+duration_ms, frame_ms) if s != start_time_ms]
+                    shift_choices = [
+                        s / 1000
+                        for s in range(start_time_ms - duration_ms +
+                                       frame_ms, start_time_ms +
+                                       duration_ms, frame_ms)
+                        if s != start_time_ms
+                    ]
                 elif self.shift_type == 'all':
-                    shift_choices = [s/1000 for s in range(0, aud_len_ms-duration_ms+1, frame_ms) if s != start_time_ms]
+                    shift_choices = [
+                        s / 1000 for s in range(0, aud_len_ms - duration_ms +
+                                                1, frame_ms)
+                        if s != start_time_ms
+                    ]
                 else:
                     raise NotImplementedError
 
@@ -180,7 +205,10 @@ class VideoDataset(data.Dataset):
             start_bit = int(sr * start_time)
         end_bit = int(start_bit + sr * self.duration)
         cut_audio = audio[start_bit:end_bit, ]
-        assert cut_audio.shape[0] == self.duration*sr, (sr, audio.shape, start_time, self.duration, cut_audio.shape[0])
+        assert cut_audio.shape[0] == self.duration * sr, (sr, audio.shape,
+                                                          start_time,
+                                                          self.duration,
+                                                          cut_audio.shape[0])
 
         return cut_audio
 

@@ -5,19 +5,31 @@ from einops import rearrange
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
+    return nn.Conv2d(in_planes,
+                     out_planes,
+                     kernel_size=3,
+                     stride=stride,
+                     padding=1,
+                     bias=False)
 
 
 def downsample_basic_block(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=stride, bias=False),
+        nn.Conv2d(inplanes,
+                  outplanes,
+                  kernel_size=1,
+                  stride=stride,
+                  bias=False),
         nn.BatchNorm2d(outplanes),
     )
 
 
 def downsample_basic_block_v2(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
+        nn.AvgPool2d(kernel_size=stride,
+                     stride=stride,
+                     ceil_mode=True,
+                     count_include_pad=False),
         nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=1, bias=False),
         nn.BatchNorm2d(outplanes),
     )
@@ -26,7 +38,12 @@ def downsample_basic_block_v2(inplanes, outplanes, stride):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None, relu_type="relu"):
+    def __init__(self,
+                 inplanes,
+                 planes,
+                 stride=1,
+                 downsample=None,
+                 relu_type="relu"):
         super(BasicBlock, self).__init__()
 
         assert relu_type in ["relu", "prelu"]
@@ -67,9 +84,17 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, num_filters=[64, 128, 256, 512], strides=[1, 2, 2, 2], relu_type="relu", gamma_zero=False, avg_pool_downsample=False):
+
+    def __init__(self,
+                 block,
+                 layers,
+                 num_filters=[64, 128, 256, 512],
+                 strides=[1, 2, 2, 2],
+                 relu_type="relu",
+                 gamma_zero=False,
+                 avg_pool_downsample=False):
         super(ResNet, self).__init__()
-        
+
         self.inplanes = 64
         self.relu_type = relu_type
         self.gamma_zero = gamma_zero
@@ -77,7 +102,11 @@ class ResNet(nn.Module):
 
         self.layers = nn.ModuleList()
         for i in range(4):
-            self.layers.append(self._make_layer(block, num_filters[i], layers[i], stride=strides[i]))
+            self.layers.append(
+                self._make_layer(block,
+                                 num_filters[i],
+                                 layers[i],
+                                 stride=strides[i]))
         # self.layer1 = self._make_layer(block, num_filters[0], layers[0], stride=strides[0])
         # self.layer2 = self._make_layer(block, num_filters[1], layers[1], stride=strides[1])
         # self.layer3 = self._make_layer(block, num_filters[2], layers[2], stride=strides[2])
@@ -101,15 +130,22 @@ class ResNet(nn.Module):
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = self.downsample_block(
-                inplanes=self.inplanes, outplanes=planes * block.expansion, stride=stride
-            )
+            downsample = self.downsample_block(inplanes=self.inplanes,
+                                               outplanes=planes *
+                                               block.expansion,
+                                               stride=stride)
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type))
+        layers.append(
+            block(self.inplanes,
+                  planes,
+                  stride,
+                  downsample,
+                  relu_type=self.relu_type))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes, relu_type=self.relu_type))
+            layers.append(
+                block(self.inplanes, planes, relu_type=self.relu_type))
 
         return nn.Sequential(*layers)
 
@@ -126,15 +162,28 @@ class ResNet(nn.Module):
 
 
 class C3dResnet18(nn.Module):
+
     def __init__(self, in_dim=1, last_dim=128, relu_type='prelu'):
         super().__init__()
         self.v_conv3D = nn.Sequential(
-            nn.Conv3d(in_dim, 64, kernel_size=(5, 7, 7), stride=(1, 2, 2), padding=(2, 3, 3), bias=False),
+            nn.Conv3d(in_dim,
+                      64,
+                      kernel_size=(5, 7, 7),
+                      stride=(1, 2, 2),
+                      padding=(2, 3, 3),
+                      bias=False),
             nn.BatchNorm3d(64),
             nn.PReLU(num_parameters=64) if relu_type == 'prelu' else nn.ReLU(),
-            nn.MaxPool3d( kernel_size=(1, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1)),
+            nn.MaxPool3d(kernel_size=(1, 3, 3),
+                         stride=(1, 2, 2),
+                         padding=(0, 1, 1)),
         )
-        self.v_conv2D = ResNet(BasicBlock, [2, 2, 2, 2], num_filters=[last_dim//8, last_dim//4, last_dim//2, last_dim], relu_type=relu_type)
+        self.v_conv2D = ResNet(BasicBlock, [2, 2, 2, 2],
+                               num_filters=[
+                                   last_dim // 8, last_dim // 4, last_dim // 2,
+                                   last_dim
+                               ],
+                               relu_type=relu_type)
         # self.mlp_head = nn.Sequential(
         #     nn.ReLU(),
         #     nn.Linear(last_dim, last_dim),
