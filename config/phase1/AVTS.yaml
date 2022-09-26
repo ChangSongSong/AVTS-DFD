@@ -39,11 +39,11 @@ dataset:
     root: '/home/ernestchu/scratch3/datasets/LRW/'
 
 dataloader:
-    batch_size: 1
+    batch_size: 10
     num_workers: 8
 
 model:
-    backbone: ['c3dr50', 'vgg', '']
+    backbone: ['resnet18', 'vgg', '']
     predict_label: false
     last_dim: 768
     dropout: 0
@@ -55,4 +55,5 @@ optimizer:
     gamma: 0.9
 
 tensorboard:
-    comment: 'AVTS_all_c3dr50_vgg_768_len72e-2_bs2_lr1e-4'
+    # comment: 'AVTS_all_c3dr50_vgg_768_len72e-2_bs2_lr1e-4'
+    comment: 'working example for resnet18'

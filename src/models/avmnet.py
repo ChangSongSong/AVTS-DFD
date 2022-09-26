@@ -190,10 +190,10 @@ class AVMNet(nn.Module):
                 vout = rearrange(vout, 'b d t -> b t d')
         else:
             vout = self.v_encoder(vid)
-            vout = rearrange(vout, 'b t d -> b d t')
-            vout = self.v_proj(vout)
-            vout = rearrange(vout, 'b d t -> b t d')
-            vout = self.v_pred(vout)
+            # vout = rearrange(vout, 'b t d -> b d t')
+            # vout = self.v_proj(vout)
+            # vout = rearrange(vout, 'b d t -> b t d')
+            # vout = self.v_pred(vout)
 
         return vout
 
@@ -206,11 +206,12 @@ class AVMNet(nn.Module):
                 aout = rearrange(aout, 'b d t -> b t d')
         else:
             aout = self.a_encoder(aud)
-            aout = rearrange(aout, 'b t d -> b d t')
-            aout = self.a_proj(aout)
-            aout = rearrange(aout, 'b d t -> b t d')
-            aout = self.a_pred(aout)
+            # aout = rearrange(aout, 'b t d -> b d t')
+            # aout = self.a_proj(aout)
+            # aout = rearrange(aout, 'b d t -> b t d')
+            # aout = self.a_pred(aout)
 
+        # aout shape: (24, 9, 768)
         return aout
 
     def _select_backbone(self, model_type, model_name):
@@ -255,8 +256,9 @@ class AVMNet(nn.Module):
                 if model_name == 'vgg':
                     m = VGG(
                         last_dim=self.last_dim,
+                        last_avg=True
                         # last_avg=(self.setting=='AVC'),
-                        temporal_half=True,  # for c3dr50
+                        # temporal_half=True,  # for c3dr50
                     )
                 elif model_name == 'seresnet18':
                     m = SEResnet(layers=[2, 2, 2, 2],

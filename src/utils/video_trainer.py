@@ -103,6 +103,9 @@ class VideoTrainer():
         self.model.train()
         for it, data in enumerate(loop):
             vid, aud, label, vpath = data
+            # vid shape: [1, 12, 3, 18, 224, 224],  (B, n_clips, C, fps * duration, H, W)
+            # aud shape: [1, 12, 1, 71, 13],        (B, n_clips, ?, ?, n_mels)
+            # label shape: (B, n_clips * 2)
 
             p = float(it + self.current_ep * len(self.train_loader)
                       ) / self.n_eps / len(self.train_loader)

@@ -139,7 +139,7 @@ class MetricLearningDataset(data.Dataset):
                 continue
 
             # run a smaller experiment
-            d_ratio = 0.1
+            d_ratio = 1.0
             ppl = os.listdir(os.path.join(img_root, c, self.mode))
             ppl = np.random.choice(ppl, int(len(ppl) * d_ratio)).tolist()
             for person in ppl:
