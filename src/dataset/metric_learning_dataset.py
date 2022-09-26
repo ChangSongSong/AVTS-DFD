@@ -137,11 +137,16 @@ class MetricLearningDataset(data.Dataset):
         for c in tqdm(os.listdir(img_root)):
             if not os.path.exists(os.path.join(img_root, c, self.mode)):
                 continue
-            for dir_name in os.listdir(os.path.join(img_root, c, self.mode)):
-                img_dir = os.path.join(img_root, c, self.mode, dir_name)
+            
+            # run a smaller experiment
+            d_ratio = 0.1
+            ppl = os.listdir(os.path.join(img_root, c, self.mode))
+            ppl = np.random.choice(ppl, int(len(ppl) * d_ratio)).tolist()
+            for person in ppl:
+                img_dir = os.path.join(img_root, c, self.mode, person)
                 aud_path = os.path.join(aud_root, c, self.mode,
-                                        dir_name + '.wav')
-                # aud_path = os.path.join(aud_root, c, self.mode, dir_name+'.npy')
+                                        person + '.wav')
+                # aud_path = os.path.join(aud_root, c, self.mode, person+'.npy')
                 if len(os.listdir(img_dir)) != 29 or not os.path.exists(
                         aud_path):
                     continue
