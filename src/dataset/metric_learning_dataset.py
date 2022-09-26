@@ -137,7 +137,7 @@ class MetricLearningDataset(data.Dataset):
         for c in tqdm(os.listdir(img_root)):
             if not os.path.exists(os.path.join(img_root, c, self.mode)):
                 continue
-            
+
             # run a smaller experiment
             d_ratio = 0.1
             ppl = os.listdir(os.path.join(img_root, c, self.mode))
