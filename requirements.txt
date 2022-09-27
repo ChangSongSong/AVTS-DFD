@@ -1,0 +1,9 @@
+PyYAML
+tqdm
+tensorboard
+einops
+pytorch_metric_learning
+librosa
+python_speech_features
+pandas
+hydra-core>=1.2.0
