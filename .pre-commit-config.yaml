@@ -1,3 +1,5 @@
+# From https://github.com/facebookresearch/vissl/blob/main/.pre-commit-config.yaml
+
 exclude: 'build|third-party|.github'
 
 default_language_version:
