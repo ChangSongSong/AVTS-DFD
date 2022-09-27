@@ -1,9 +1,0 @@
-PyYAML
-tqdm
-tensorboard
-einops
-pytorch_metric_learning
-librosa
-python_speech_features
-pandas
-yapf
