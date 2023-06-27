@@ -148,10 +148,6 @@ class FakeNet(nn.Module):
                 fake_type_label = fake_type_label.squeeze(1)
             else:
                 fake_type_label = fake_type_label.float()
-            # fake_idx = [i for i in range(len(y)) if y[i]]
-            # print(fake_logits, fake_type_label)
-            # print(fake_idx)
-            # print(fake_logits[fake_idx], fake_type_label[fake_idx])
             fake_loss = self.FakeTypeLoss(fake_logits, fake_type_label)
 
             output['FakeType'] = torch.unsqueeze(fake_loss, 0)
