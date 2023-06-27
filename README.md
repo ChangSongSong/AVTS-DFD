@@ -1,4 +1,4 @@
-# AVM-FFD
+# AVTS-FFD
 
 ## How to run
 ### Prepare dataset
