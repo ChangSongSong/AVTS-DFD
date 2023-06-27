@@ -11,7 +11,7 @@ train:
     resume: '/checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2/best_loss.pth'
     only_model: true
     loss: ['BCE']
-    save_dir: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
+    save_dir: '/checkpoints/phase2/all_c3dr50_vgg_768_transformer_len72e-2'
     save_frequency: 1
     patience: 0
     val_policy: ['loss']
@@ -21,8 +21,8 @@ test:
     mode: 'VA'
     gpu_ids: [0]
     predict: 'fc'
-    resume: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2/best_loss.pth'
-    save_dir: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
+    resume: '/checkpoints/phase2/all_c3dr50_vgg_768_transformer_len72e-2/best_loss.pth'
+    save_dir: '/checkpoints/phase2/all_c3dr50_vgg_768_transformer_len72e-2'
 
 dataset:
     use_percentage: 100
@@ -30,13 +30,13 @@ dataset:
     fps: 25
     duration: 0.72
     sample_rate: 1
-    train_fake_types: ['DF', 'F2F', 'NT']
-    test_fake_types: ['FS']
+    train_fake_types: ['DF', 'F2F', 'NT', 'FS']
+    test_fake_types: ['DF', 'F2F', 'NT', 'FS']
     img_type: 'face'
     grayscale: false
     aud_feat: 'mfcc'
     root: 'Datasets/FaceForensics'
-    test: '/home/cssung/AVnet/datasets/FF++/csvs/FS_VA_duration_0.2_face_test.csv'
+    test: '/home/cssung/AVnet/datasets/FF++/csvs/all_VA_duration_0.2_face_test.csv'
 
 dataloader:
     batch_size: 64
@@ -53,4 +53,4 @@ optimizer:
     weight_decay: 0.0001
 
 tensorboard:
-    comment: '_FF++_FS_c3dr50_vgg_768_transformer_len72e-2_bs32_lr2e-4'
+    comment: '_FF++_all_c3dr50_vgg_768_transformer_len72e-2_bs32_lr2e-4'
