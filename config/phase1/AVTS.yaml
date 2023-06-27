@@ -12,7 +12,7 @@ train:
     only_model: false
     loss: ['NTXent']
     setting: 'AVTS'
-    save_dir: '/checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2'
+    save_dir: 'checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2'
     save_frequency: 1
     patience: 0
     val_policy: ['loss']
@@ -23,7 +23,7 @@ test:
     gpu_ids: [0]
     predict: 'fc'
     resume: '/checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2/best.pth'
-    save_dir: '/checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2'
+    save_dir: 'checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2'
 
 dataset:
     size: 224

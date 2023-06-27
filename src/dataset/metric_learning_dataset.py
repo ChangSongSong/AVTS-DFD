@@ -25,7 +25,6 @@ class MetricLearningDataset(data.Dataset):
             shift_type='',
             img_type='faces',
             aud_feat='mfcc',
-            random_pick_one=False,
     ):
         self.mode = mode
         self.fps = fps
@@ -39,8 +38,6 @@ class MetricLearningDataset(data.Dataset):
 
         self.video_info = self.get_info(root)
         self.transform = transform
-
-        self.random_pick_one = random_pick_one
 
     def __getitem__(self, index):
         st = time.time()
@@ -64,14 +61,7 @@ class MetricLearningDataset(data.Dataset):
         all_imgs = torch.from_numpy(self.load_img([os.path.join(vpath, f'{i:05d}.jpg') for i in range(start_frame, end_frame+self.frames_per_clip-1)]))
         vids = []
         for frame in range(start_frame, end_frame, skip):
-            if self.random_pick_one:
-                if self.mode == 'train':
-                    selected_frame = np.random.randint(low=frame, high=frame+self.frames_per_clip, size=1)[0]
-                else:
-                    selected_frame = frame+self.frames_per_clip//2
-                vid = all_imgs[selected_frame:selected_frame+1, :, :]
-            else:
-                vid = all_imgs[frame:frame+self.frames_per_clip, :, :]
+            vid = all_imgs[frame:frame+self.frames_per_clip, :, :]
             if self.grayscale:
                 vid = vid.unsqueeze(-1)
             if self.transform is not None and 'video' in self.transform:
