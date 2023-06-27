@@ -49,7 +49,8 @@ class FakeTrainer():
         self.scaler = amp.GradScaler()
 
         # Move to GPU
-        self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
+        if config['train']['gpu_ids']:
+            self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
 
         # Tensorboard
         if config['tensorboard']['comment']:

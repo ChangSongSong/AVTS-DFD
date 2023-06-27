@@ -72,11 +72,13 @@ class Tester():
             self.config['test']['resume'], map_location=self.device)
 
         if 'module' in list(checkpoint['model'].keys())[0]:
-            self.model = torch.nn.DataParallel(self.model, device_ids=config['test']['gpu_ids']).to(self.device)
+            if config['train']['gpu_ids']:
+                self.model = torch.nn.DataParallel(self.model, device_ids=config['test']['gpu_ids']).to(self.device)
             self.model.load_state_dict(checkpoint['model'])
         else:
             self.model.load_state_dict(checkpoint['model'])
-            self.model = torch.nn.DataParallel(self.model, device_ids=config['test']['gpu_ids']).to(self.device)
+            if config['train']['gpu_ids']:
+                self.model = torch.nn.DataParallel(self.model, device_ids=config['test']['gpu_ids']).to(self.device)
 
         # check save dir exists
         if self.save_dir and not os.path.exists(self.save_dir):
