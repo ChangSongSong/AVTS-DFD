@@ -12,7 +12,6 @@ from torch.utils import data
 from scipy.io import wavfile
 from torchvision.transforms import Compose, RandomCrop, RandomHorizontalFlip, CenterCrop
 from torchaudio.transforms import MelSpectrogram
-# from audio_augmentations import Gain
 
 from dataset.dataset_utils import pil_loader
 from dataset.transforms import ToTensorVideo, NormalizeVideo
@@ -32,7 +31,6 @@ class FakeDataset(data.Dataset):
             aud_feat='mfcc',
             fake_types=['DF', 'FS', 'F2F', 'NT'],
             use_percentage=100,
-            pick_one=False,
     ):
         self.mode = mode
         self.input_mode = input_mode
@@ -47,8 +45,6 @@ class FakeDataset(data.Dataset):
         self.fake_types_to_idx = {'real': -1, 'fake': -1}
         for i in range(len(self.fake_types)):
             self.fake_types_to_idx[self.fake_types[i]] = i
-
-        self.pick_one = pick_one
 
         self.video_info = self.get_info(root)
         
@@ -65,7 +61,6 @@ class FakeDataset(data.Dataset):
                             NormalizeVideo((0.421,), (0.165,))
                         ]),
                 'audio': Compose([
-                            # Gain(min_gain=-10, max_gain=10),
                             MelSpectrogram(sample_rate=16000, n_mels=64, n_fft=512, win_length=512, hop_length=256),
                         ]),
             }
@@ -88,23 +83,16 @@ class FakeDataset(data.Dataset):
         # video
         if 'V' in self.input_mode:
             vid = self.get_vid(vid_path, start_frame)
-            if self.pick_one:
-                if self.mode == 'train':
-                    selected_frame = np.random.randint(self.frames_per_clip, size=1)[0]
-                else:
-                    selected_frame = self.frames_per_clip//2
-                vid = vid[:, selected_frame:selected_frame+1, :, :]
         # audio
         if 'A' in self.input_mode:
             aud = self.get_aud(aud_path, start_frame)
         # label
         label = torch.LongTensor([int(video_type != 'real')])
-        fake_type_label = torch.LongTensor([self.fake_types_to_idx[video_type]])
 
         if self.input_mode == 'V':
-            return [vid], label, vid_path, fake_type_label
+            return [vid], label, vid_path
         elif self.input_mode == 'VA':
-            return [vid, aud], label, vid_path, fake_type_label
+            return [vid, aud], label, vid_path
 
     def get_vid(self, vid_path, start_frame):
         # get data paths

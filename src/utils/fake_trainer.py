@@ -26,11 +26,6 @@ class FakeTrainer():
         print('\n--- Dataset ---')
         self.load_dataset()
 
-        if config['model']['logit_adjustment']:
-            self.logit_adjustment = self.compute_adjustment()
-        else:
-            self.logit_adjustment = None
-        
         # Model
         print('\n--- Model ---')
         self.load_model()
@@ -90,7 +85,7 @@ class FakeTrainer():
 
         self.model.train()
         for it, data in enumerate(loop):
-            x, label, vpath, fake_type_label = data
+            x, label, vpath = data
 
             x = list(map(lambda x: x.to(self.device, dtype=torch.float), x))
             label = label.to(self.device)
@@ -101,18 +96,13 @@ class FakeTrainer():
             total_loss = 0
 
             with amp.autocast():
-                output = self.model(x, y=label, alpha=alpha, fake_type_label=fake_type_label if self.predict_fake_label else None)
+                output = self.model(x, y=label, alpha=alpha)
 
             # supervised learning
             if 'BCE' in self.use_losses:
                 bce_loss = output['BCE'].mean()
                 total_loss += bce_loss
                 ep_loss['BCE'] += bce_loss.item()/len(self.train_loader)
-
-            if self.predict_fake_label:
-                fake_type_loss = output['FakeType'].mean()
-                total_loss += fake_type_loss
-                ep_loss['FakeType'] += fake_type_loss.item()/len(self.train_loader)
 
             self.optimizer.zero_grad()
 
@@ -137,7 +127,6 @@ class FakeTrainer():
 
             loop.set_postfix(
                 bce=bce_loss.item(),
-                fake_da=fake_type_loss.item() if self.predict_fake_label else 0,
             )
 
         if self.show_metric:
@@ -310,7 +299,6 @@ class FakeTrainer():
         self.mode = self.config['train']['mode']
         self.orig_lr = self.config['optimizer']['lr']
         self.show_metric = self.config['train']['show_metric']
-        self.predict_fake_label = self.config['model']['predict_fake_label']
         self.frames_per_clip = int(self.config['dataset']['fps'] * self.config['dataset']['duration'])
 
     def load_dataset(self):
@@ -327,7 +315,6 @@ class FakeTrainer():
                 img_type=self.config['dataset']['img_type'],
                 grayscale=self.config['dataset']['grayscale'],
                 aud_feat=self.config['dataset']['aud_feat'],
-                fake_types=self.config['dataset']['train_fake_types'],
                 use_percentage=self.config['dataset']['use_percentage'],
             )
         elif 'FakeAVCeleb' in self.config['dataset']['root']:
@@ -356,7 +343,6 @@ class FakeTrainer():
                 img_type=self.config['dataset']['img_type'],
                 grayscale=self.config['dataset']['grayscale'],
                 aud_feat=self.config['dataset']['aud_feat'],
-                fake_types=self.config['dataset']['test_fake_types'],
             )
         elif 'FakeAVCeleb' in self.config['dataset']['root']:
             self.val_dataset = FakeAVCelebDataset(
@@ -404,10 +390,6 @@ class FakeTrainer():
             use_losses=self.config['train']['loss'],
             aud_feat=self.config['dataset']['aud_feat'],
             normalized=self.config['model']['normalized'],
-            logit_adjustment=self.logit_adjustment,
-            fake_classes=len(self.config['dataset']['train_fake_types']),
-            predict_fake_label=self.config['model']['predict_fake_label'],
-            modality_embedding=self.config['model']['modality_embedding'],
         )
 
         # Resume Model
@@ -448,21 +430,3 @@ class FakeTrainer():
         trainable_parameters = sum([p.numel() for p in self.model.parameters() if p.requires_grad == True])
         print(f'Trainable Model {" "*(max_model_name_length+2)} Parameters: {trainable_parameters/1_000_000:.3f}M')
         print('-'*(max_model_name_length+40))
-
-    def compute_adjustment(self, tro=1.0):
-        """compute the base probabilities"""
-
-        label_freq = {}
-        for i, (inputs, target, _) in enumerate(self.train_loader):
-            target = target.to(self.device)
-            for j in target:
-                key = int(j.item())
-                label_freq[key] = label_freq.get(key, 0) + 1
-        label_freq = dict(sorted(label_freq.items()))
-        label_freq_array = np.array(list(label_freq.values()))
-        label_freq_array = label_freq_array / label_freq_array.sum()
-        adjustments = np.log(label_freq_array ** tro + 1e-12)
-        adjustments = torch.from_numpy(adjustments)
-        # adjustments = adjustments.to(self.device)
-        print('Logit adjustments: ', adjustments)
-        return adjustments

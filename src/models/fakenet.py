@@ -15,7 +15,7 @@ from models.temporal_transformer import TemporalTransformer
 
 
 class FakeNet(nn.Module):
-    def __init__(self, backbone, img_in_dim, last_dim, frames_per_clip, num_classes=1, fake_classes=1, mode='VA', relu_type = 'prelu', predict_label=False, predict_fake_label=False, modality_embedding=False, use_losses=[], aud_feat='mfcc', concat_type='concat', normalized='', logit_adjustment=None, weight_decay=1e-4):
+    def __init__(self, backbone, img_in_dim, last_dim, frames_per_clip, num_classes=1, mode='VA', relu_type = 'prelu', predict_label=False, predict_fake_label=False, modality_embedding=False, use_losses=[], aud_feat='mfcc', concat_type='concat', normalized='', logit_adjustment=None, weight_decay=1e-4):
         super(FakeNet, self).__init__()
 
         self.backbone = backbone
@@ -31,9 +31,7 @@ class FakeNet(nn.Module):
         self.predict_fake_label = predict_fake_label
         self.modality_embedding = modality_embedding
         self.num_classes = num_classes
-        self.fake_classes = fake_classes
         self.relu_type = relu_type
-        self.logit_adjustment = logit_adjustment
         self.weight_decay = weight_decay
 
         # video
@@ -58,9 +56,8 @@ class FakeNet(nn.Module):
 
         # Loss
         self.CELoss = nn.BCEWithLogitsLoss() if self.num_classes == 1 else nn.CrossEntropyLoss()
-        self.FakeTypeLoss = nn.CrossEntropyLoss(ignore_index=-1)
 
-    def forward(self, x, alpha=0, y=None, fake_type_label=None, out_feat=False):
+    def forward(self, x, alpha=0, y=None, out_feat=False):
         output = {}
 
         if self.mode == 'V':
@@ -130,27 +127,9 @@ class FakeNet(nn.Module):
                 y = y.squeeze(1)
             else:
                 y = y.float()
-            if self.logit_adjustment is not None:
-                logits = logits + self.logit_adjustment.to(logits.device)
-                bce_loss = self.CELoss(logits, y)
-
-                loss_r = 0
-                for parameter in self.temporal_classifier.parameters():
-                    loss_r += torch.sum(parameter ** 2)
-                bce_loss = bce_loss + self.weight_decay * loss_r
-            else:
-                bce_loss = self.CELoss(logits, y)
+            bce_loss = self.CELoss(logits, y)
 
             output['BCE'] = torch.unsqueeze(bce_loss, 0)
-
-        if fake_type_label is not None:
-            if fake_logits.shape[-1] != fake_type_label.shape[-1]:
-                fake_type_label = fake_type_label.squeeze(1)
-            else:
-                fake_type_label = fake_type_label.float()
-            fake_loss = self.FakeTypeLoss(fake_logits, fake_type_label)
-
-            output['FakeType'] = torch.unsqueeze(fake_loss, 0)
 
         return output
 
@@ -228,7 +207,6 @@ class FakeNet(nn.Module):
                     num_classes=self.num_classes,
                     predict_fake_label=self.predict_fake_label,
                     modality_embedding=self.modality_embedding,
-                    fake_classes=self.fake_classes,
                     dim=dim,
                     depth=1,
                     heads=8,

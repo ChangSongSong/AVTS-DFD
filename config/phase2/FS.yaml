@@ -8,10 +8,10 @@ train:
     gpu_ids: [0, 1]
     n_epochs: 200
     freeze_feature_extractor: true
-    resume: '/checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2/best_loss.pth'
+    resume: 'checkpoints/phase1/AVTS_all_c3dr50_vgg_768_len72e-2/best_loss.pth'
     only_model: true
     loss: ['BCE']
-    save_dir: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
+    save_dir: 'checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
     save_frequency: 1
     patience: 0
     val_policy: ['loss']
@@ -21,8 +21,8 @@ test:
     mode: 'VA'
     gpu_ids: [0]
     predict: 'fc'
-    resume: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2/best_loss.pth'
-    save_dir: '/checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
+    resume: 'checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2/best_loss.pth'
+    save_dir: 'checkpoints/phase2/FS_c3dr50_vgg_768_transformer_len72e-2'
 
 dataset:
     use_percentage: 100
@@ -47,6 +47,7 @@ model:
     predict_label: true
     last_dim: 768
     dropout: 0
+    normalized: 'batchnorm'
 
 optimizer:
     lr: 0.0002

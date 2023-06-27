@@ -47,6 +47,7 @@ model:
     predict_label: true
     last_dim: 768
     dropout: 0
+    normalized: 'batchnorm'
 
 optimizer:
     lr: 0.0002
