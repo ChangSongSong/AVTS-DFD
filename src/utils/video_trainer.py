@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import Compose, RandomCrop, RandomHorizontalFlip, CenterCrop, RandomErasing
 from collections import defaultdict
 
-from models.avmnet import AVMNet
+from models.avtsnet import AVTSNet
 from dataset.metric_learning_dataset import MetricLearningDataset
 from dataset.samplers import RandomSampler
 from dataset.transforms import ToTensorVideo, NormalizeVideo
@@ -47,7 +47,8 @@ class VideoTrainer():
         self.scaler = amp.GradScaler()
 
         # Move to GPU
-        self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
+        if config['train']['gpu_ids']:
+            self.model = torch.nn.DataParallel(self.model, device_ids=config['train']['gpu_ids']).to(self.device)
 
         # # Move optimizer to GPU
         # for param in self.optimizer.state.values():
@@ -427,7 +428,7 @@ class VideoTrainer():
 
     def load_model(self):
         # Model
-        self.model = AVMNet(
+        self.model = AVTSNet(
             backbone=self.config['model']['backbone'],
             last_dim=self.config['model']['last_dim'],
             frames_per_clip=int(self.config['dataset']['fps'] * self.config['dataset']['duration']),
@@ -435,8 +436,7 @@ class VideoTrainer():
             use_losses=self.config['train']['loss'],
             aud_feat=self.config['dataset']['aud_feat'],
             setting=self.config['train']['setting'],
-            img_in_dim=1 if self.config['dataset']['grayscale'] else 3,
-            use_teacher=self.config['model']['use_teacher'],
+            img_in_dim=1 if self.config['dataset']['grayscale'] else 3
         )
 
         # Resume parameters

@@ -41,7 +41,6 @@ class Tester():
             input_mode=self.mode,
             fps=config['dataset']['fps'],
             duration=config['dataset']['duration'],
-            # shift_type=config['dataset']['shift_type'],
             aud_feat=config['dataset']['aud_feat'],)
         print(f'test dataset size: {len(test_dataset)}')
 
@@ -169,24 +168,6 @@ class Tester():
             print(f'acc: {acc:.3f}')
 
         return
-
-    # def find_best_threshold(self, scores, targets, thresholds):
-    #     acc = np.zeros((len(thresholds)))
-    #     auc = np.zeros((len(thresholds)))
-    #     f1 = np.zeros((len(thresholds)))
-    #     precision = np.zeros((len(thresholds)))
-    #     recall = np.zeros((len(thresholds)))
-
-    #     for thr_idx, thr in enumerate(thresholds):
-    #         if self.use_predict == 'distance':
-    #             predicitons = Predict_by_distance(scores, thr)
-    #         auc[thr_idx], acc[thr_idx], f1[thr_idx], precision[thr_idx], recall[thr_idx] = self.evaluate(
-    #             predicitons, targets)
-
-    #     best_thr_index = np.argmax(auc)
-    #     best_thresholds = thresholds[best_thr_index]
-
-    #     return auc[best_thr_index], acc[best_thr_index], f1[best_thr_index], precision[best_thr_index], recall[best_thr_index], best_thresholds
 
     def resume(self):
         checkpoint = torch.load(
